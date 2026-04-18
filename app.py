@@ -1,21 +1,74 @@
-from flask import Flask, request, jsonify, render_template_string
+from flask import Flask, request, jsonify, render_template
 import os
 import random
 import threading
 import time
-import pygame
 
-pygame.mixer.init()
+
+def env_flag(name: str, default: bool = False) -> bool:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+AUDIO_DISABLED = env_flag("HALLOWEEN_AUDIO_DISABLED")
+
+try:
+    import pygame
+except ImportError:
+    pygame = None
+
+
+def init_audio_mixer():
+    if AUDIO_DISABLED:
+        return False
+
+    if pygame is None:
+        print("AUDIO WARNING -> pygame is not installed; audio disabled.", flush=True)
+        return False
+
+    try:
+        pygame.mixer.init()
+        pygame.mixer.set_num_channels(8)
+        return True
+    except Exception as e:
+        print(f"AUDIO WARNING -> mixer init failed; audio disabled: {e}", flush=True)
+        return False
+
+
+class NullAudioChannel:
+    def play(self, sound):
+        return None
+
+    def stop(self):
+        return None
+
+
+AUDIO_MIXER_READY = init_audio_mixer()
+
+
+def make_audio_channels():
+    if AUDIO_MIXER_READY:
+        return {
+            "BACKGROUND": pygame.mixer.Channel(0),
+            "MAIN": pygame.mixer.Channel(1),
+            "HEAD_1": pygame.mixer.Channel(2),
+            "HEAD_2": pygame.mixer.Channel(3),
+            "DOOR": pygame.mixer.Channel(4),
+        }
+
+    return {
+        "BACKGROUND": NullAudioChannel(),
+        "MAIN": NullAudioChannel(),
+        "HEAD_1": NullAudioChannel(),
+        "HEAD_2": NullAudioChannel(),
+        "DOOR": NullAudioChannel(),
+    }
+
 
 AUDIO_FOLDER = os.path.join(os.path.dirname(__file__), "audio")
 
-TRACKS = {
-    "WELCOME": os.path.join(AUDIO_FOLDER, "welcome.mp3"),
-    "HAG": os.path.join(AUDIO_FOLDER, "hag.mp3"),
-    "SKINNY": os.path.join(AUDIO_FOLDER, "skinny.mp3"),
-    "TREAT": os.path.join(AUDIO_FOLDER, "treat.mp3"),
-    "TRICK": os.path.join(AUDIO_FOLDER, "trick.mp3"),
-}
 # Optional serial support for later
 try:
     import serial  # pyserial
@@ -23,11 +76,6 @@ except ImportError:
     serial = None
 
 app = Flask(__name__)
-
-pygame.mixer.init()
-pygame.mixer.set_num_channels(8)
-
-AUDIO_FOLDER = os.path.join(os.path.dirname(__file__), "audio")
 
 TRACK_FILES = {
     "WELCOME": os.path.join(AUDIO_FOLDER, "welcome.mp3"),
@@ -43,7 +91,8 @@ TRACKS = {}
 # -----------------------------
 # CONFIG
 # -----------------------------
-USE_MOCK_ARDUINO = False
+USE_MOCK_ARDUINO = env_flag("HALLOWEEN_USE_MOCK_ARDUINO")
+MOCK_SCENE_DELAY_SCALE = float(os.environ.get("HALLOWEEN_MOCK_SCENE_DELAY_SCALE", "1"))
 SERIAL_PORT = os.environ.get("HALLOWEEN_SERIAL_PORT", "/dev/ttyACM0")
 BAUD_RATE = 115200
 HOST = "0.0.0.0"
@@ -153,6 +202,32 @@ state = {
     "active_show_token": 0,
 }
 
+
+def reset_runtime_state():
+    state.update(
+        {
+            "arduino_connected": False,
+            "arduino_mode": "MOCK" if USE_MOCK_ARDUINO else "SERIAL",
+            "protocol_version": PROTOCOL_VERSION,
+            "arduino_protocol_version": "UNKNOWN",
+            "system_status": "STARTING",
+            "current_action": "NONE",
+            "last_command": "None",
+            "last_result": None,
+            "last_received_status": "BOOT",
+            "scene_active": False,
+            "pending_fog": False,
+            "next_fog_due_epoch": 0,
+            "busy_until_epoch": 0,
+            "outputs": {name: False for name in OUTPUT_NAMES},
+            "recent_scenes": [],
+            "log": [],
+            "show_cancelled": False,
+            "active_show_token": 0,
+        }
+    )
+
+
 scene_bag = []
 arduino = None
 command_lock = threading.Lock()
@@ -162,13 +237,7 @@ show_control_lock = threading.Lock()
 show_token_counter = 0
 audio_lock = threading.Lock()
 
-AUDIO_CHANNELS = {
-    "BACKGROUND": pygame.mixer.Channel(0),
-    "MAIN": pygame.mixer.Channel(1),
-    "HEAD_1": pygame.mixer.Channel(2),
-    "HEAD_2": pygame.mixer.Channel(3),
-    "DOOR": pygame.mixer.Channel(4),
-}
+AUDIO_CHANNELS = make_audio_channels()
 
 
 # -----------------------------
@@ -703,6 +772,10 @@ audio_lock = threading.Lock()
 def load_audio():
     TRACKS.clear()
 
+    if not AUDIO_MIXER_READY:
+        log("AUDIO DISABLED -> skipping audio load")
+        return
+
     for track_name, file_path in TRACK_FILES.items():
         if not os.path.exists(file_path):
             log(f"AUDIO WARNING -> Missing file for {track_name}: {file_path}")
@@ -714,17 +787,15 @@ def load_audio():
         except Exception as e:
             log(f"AUDIO ERROR -> Failed to load {track_name}: {e}")
 
-AUDIO_CHANNELS = {
-    "BACKGROUND": pygame.mixer.Channel(0),
-    "MAIN": pygame.mixer.Channel(1),
-    "HEAD_1": pygame.mixer.Channel(2),
-    "HEAD_2": pygame.mixer.Channel(3),
-    "DOOR": pygame.mixer.Channel(4),
-}
+AUDIO_CHANNELS = make_audio_channels()
 
 def play_audio(name: str, channel_name: str = "MAIN", stop_same_channel: bool = True):
     track_name = name.strip().upper()
     channel_name = channel_name.strip().upper()
+
+    if not AUDIO_MIXER_READY:
+        log(f"AUDIO DISABLED -> skipped {track_name} on {channel_name}")
+        return True
 
     if track_name not in TRACKS:
         log(f"AUDIO ERROR -> Unknown or unloaded track: {track_name}")
@@ -946,7 +1017,9 @@ class MockArduino:
             lines.append(f"STATUS:RUNNING_SCENE:{action}")
 
             duration_ms = SCENES[action]["duration_ms"]
-            time.sleep(duration_ms / 1000.0)
+            delay_seconds = (duration_ms / 1000.0) * MOCK_SCENE_DELAY_SCALE
+            if delay_seconds > 0:
+                time.sleep(delay_seconds)
 
             self.system_state = "IDLE"
             self.current_action = "NONE"
@@ -1071,7 +1144,8 @@ def _process_command_lines(command: str, lines: list[str]):
     if command == "SYS:STATUS":
         success = any(line.startswith("STATUS:") for line in lines)
 
-    if expected_done and not success and state["last_result"] is None and not command.startswith("SYS:"):
+    has_error = any(line.startswith("ERROR:") for line in lines)
+    if expected_done and not success and not has_error and not command.startswith("SYS:"):
         state["last_result"] = "ERROR:UNEXPECTED_REPLY"
 
     return success
@@ -1166,7 +1240,11 @@ def stop_audio_channel(channel_name: str):
 def stop_all_audio():
     with audio_lock:
         try:
-            pygame.mixer.stop()
+            if AUDIO_MIXER_READY:
+                pygame.mixer.stop()
+            else:
+                for channel in AUDIO_CHANNELS.values():
+                    channel.stop()
             log("AUDIO STOP -> ALL")
             return True
         except Exception as e:
@@ -1295,15 +1373,15 @@ def idle_fog_worker():
 # -----------------------------
 @app.route("/")
 def index():
-    return render_template_string(
-        INDEX_HTML,
+    return render_template(
+        "index.html",
         fun_buttons=FUN_BUTTONS,
     )
 
 @app.route("/service")
 def service():
-    return render_template_string(
-        SERVICE_HTML,
+    return render_template(
+        "service.html",
         service_buttons=SERVICE_BUTTONS,
         scene_test_buttons=SCENE_TEST_BUTTONS,
     )

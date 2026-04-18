@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <title>Halloween Prop Control Service</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="{{ url_for('static', filename='console.css') }}">
+  <script>
+    window.SERVICE_BUTTONS = {{ service_buttons|tojson }};
+  </script>
+  <script defer src="{{ url_for('static', filename='console.js') }}"></script>
+</head>
+<body data-screen="service">
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">Prop Control System</p>
+      <h1>Service</h1>
+    </div>
+    <nav class="navrow" aria-label="Console navigation">
+      <a class="navbtn" href="/">Operator</a>
+      <a class="navbtn active" href="/service">Service</a>
+    </nav>
+  </header>
+
+  <main class="service-shell">
+    <section class="panel service-status" aria-labelledby="system-heading">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Diagnostics</p>
+          <h2 id="system-heading">System State</h2>
+        </div>
+        <span id="status_badge" class="badge badge-muted">STARTING</span>
+      </div>
+      <dl class="telemetry-grid">
+        <div><dt>Arduino Mode</dt><dd id="arduino_mode">Unknown</dd></div>
+        <div><dt>Connected</dt><dd id="arduino_connected">Unknown</dd></div>
+        <div><dt>Controller Protocol</dt><dd id="protocol_version">Unknown</dd></div>
+        <div><dt>Arduino Protocol</dt><dd id="arduino_protocol_version">Unknown</dd></div>
+        <div><dt>System Status</dt><dd id="system_status">Unknown</dd></div>
+        <div><dt>Current Action</dt><dd id="current_action">None</dd></div>
+        <div><dt>Last Command</dt><dd id="last_command">None</dd></div>
+        <div><dt>Last Result</dt><dd id="last_result">None</dd></div>
+        <div><dt>Last Received</dt><dd id="last_received_status">None</dd></div>
+        <div><dt>Scene Active</dt><dd id="scene_active">false</dd></div>
+        <div><dt>Pending Fog</dt><dd id="pending_fog">false</dd></div>
+        <div><dt>Busy Until</dt><dd id="busy_until_text">None</dd></div>
+        <div><dt>Show Cancelled</dt><dd id="show_cancelled">false</dd></div>
+        <div><dt>Show Token</dt><dd id="active_show_token">0</dd></div>
+      </dl>
+    </section>
+
+    <section class="panel" aria-labelledby="system-controls-heading">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Safety</p>
+          <h2 id="system-controls-heading">System Controls</h2>
+        </div>
+      </div>
+      <div class="button-grid">
+        <button class="console-btn danger" data-command="SYS:STOP" data-emergency="true">STOP</button>
+        <button class="console-btn danger" data-command="SYS:RESET" data-emergency="true">RESET</button>
+        <button class="console-btn warning" data-command="SYS:ALL_OFF">ALL OFF</button>
+        <button class="console-btn" data-command="SYS:STATUS">STATUS</button>
+        <button class="console-btn" data-command="SYS:PING">PING</button>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="scene-heading">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Scene Validation</p>
+          <h2 id="scene-heading">Scene Tests</h2>
+        </div>
+      </div>
+      <div class="button-grid">
+        {% for label, command in scene_test_buttons %}
+        <button class="console-btn" data-command="{{ command }}">{{ label }}</button>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="panel output-panel-wide" aria-labelledby="output-heading">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Manual Output Control</p>
+          <h2 id="output-heading">Service Toggles</h2>
+        </div>
+      </div>
+      <div class="button-grid outputs">
+        {% for label, command in service_buttons %}
+        <button class="console-btn output-toggle" id="btn-{{ command|replace(':', '-') }}" data-command="{{ command }}">{{ label }}</button>
+        {% endfor %}
+      </div>
+      <div id="output_tiles" class="output-grid service-outputs"></div>
+    </section>
+
+    <section class="panel" aria-labelledby="recent-heading">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">History</p>
+          <h2 id="recent-heading">Recent Scenes</h2>
+        </div>
+      </div>
+      <div id="recent_scenes" class="history-list">No scenes yet.</div>
+    </section>
+
+    <section class="panel log-panel" aria-labelledby="log-heading">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Event Stream</p>
+          <h2 id="log-heading">Log</h2>
+        </div>
+      </div>
+      <pre id="log_box" class="log-box"></pre>
+    </section>
+  </main>
+</body>
+</html>

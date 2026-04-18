@@ -25,3 +25,7 @@ Thumbs.db
 build/
 *.hex
 *.elf
+.arduino-data/
+.arduino-downloads/
+.arduino-cli.yaml
+tools/arduino-cli/

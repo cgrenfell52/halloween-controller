@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <title>Halloween Prop Control</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="{{ url_for('static', filename='console.css') }}">
+  <script defer src="{{ url_for('static', filename='console.js') }}"></script>
+</head>
+<body data-screen="operator">
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">Prop Control System</p>
+      <h1>Operator</h1>
+    </div>
+    <nav class="navrow" aria-label="Console navigation">
+      <a class="navbtn active" href="/">Operator</a>
+      <a class="navbtn" href="/service">Service</a>
+    </nav>
+  </header>
+
+  <main class="operator-shell">
+    <section class="panel hero-panel" aria-labelledby="show-heading">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Main Show</p>
+          <h2 id="show-heading">Trigger Control</h2>
+        </div>
+        <span id="status_badge" class="badge badge-muted">STARTING</span>
+      </div>
+
+      <div class="primary-actions">
+        <button class="action-btn action-green" data-main="TRICK">TRICK</button>
+        <button class="action-btn action-green" data-main="TREAT">TREAT</button>
+        <button class="action-btn action-stop" data-command="SYS:STOP" data-emergency="true">STOP</button>
+      </div>
+    </section>
+
+    <aside class="panel status-panel" aria-labelledby="status-heading">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Live State</p>
+          <h2 id="status-heading">Controller</h2>
+        </div>
+        <span id="mode_badge" class="badge badge-muted">UNKNOWN</span>
+      </div>
+
+      <dl class="telemetry-grid compact">
+        <div><dt>Connection</dt><dd id="arduino_connected">Unknown</dd></div>
+        <div><dt>Status</dt><dd id="system_status">Unknown</dd></div>
+        <div><dt>Action</dt><dd id="current_action">None</dd></div>
+        <div><dt>Result</dt><dd id="last_result">None</dd></div>
+      </dl>
+    </aside>
+
+    <section class="panel outputs-panel" aria-labelledby="outputs-heading">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Field Outputs</p>
+          <h2 id="outputs-heading">Output State</h2>
+        </div>
+      </div>
+      <div id="output_tiles" class="output-grid"></div>
+    </section>
+
+    <section class="panel" aria-labelledby="quick-heading">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Manual Scenes</p>
+          <h2 id="quick-heading">Quick Tests</h2>
+        </div>
+      </div>
+      <div class="button-grid">
+        {% for label, command in fun_buttons %}
+        <button class="console-btn" data-command="{{ command }}">{{ label }}</button>
+        {% endfor %}
+      </div>
+    </section>
+  </main>
+</body>
+</html>
