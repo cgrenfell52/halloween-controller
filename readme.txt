@@ -40,6 +40,22 @@ Arduino responsibilities:
 Timing-critical prop behavior should stay on the Arduino. The Flask app should
 remain responsive and should not block the main web thread.
 
+## Arduino Pin Layout
+
+Current active output layout:
+
+- HEAD_1 / Skinny: pin 4
+- HEAD_2 / Hag: pin 5
+- AIR_CANNON: pin 6
+- AIR_TICKLER: pin 7
+- DOOR: pin 8
+- HORN / Ooga horn: pin 9
+- CRACKLER: pin 10
+- STROBE: pin 13
+- FOG: pin 22
+
+TV_1 and TV_2 are not active right now.
+
 ## Important Files
 
 - app.py: Main Flask controller, UI, serial communication, audio, and show logic.

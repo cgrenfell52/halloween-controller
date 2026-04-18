@@ -11,13 +11,13 @@
 
     TOGGLE:HEAD_1
     TOGGLE:HEAD_2
-    TOGGLE:HORN
     TOGGLE:AIR_CANNON
-    TOGGLE:DOOR
     TOGGLE:AIR_TICKLER
+    TOGGLE:DOOR
+    TOGGLE:HORN
+    TOGGLE:CRACKLER
+    TOGGLE:STROBE
     TOGGLE:FOG
-    TOGGLE:TV_1
-    TOGGLE:TV_2
 
     RUN:TRICK_HEAD_1
     RUN:TRICK_HEAD_2
@@ -45,38 +45,38 @@ static const uint8_t OUTPUT_COUNT = 9;
 enum OutputIndex : uint8_t {
   OUT_HEAD_1 = 0,
   OUT_HEAD_2,
-  OUT_HORN,
   OUT_AIR_CANNON,
-  OUT_DOOR,
   OUT_AIR_TICKLER,
-  OUT_FOG,
-  OUT_TV_1,
-  OUT_TV_2
+  OUT_DOOR,
+  OUT_HORN,
+  OUT_CRACKLER,
+  OUT_STROBE,
+  OUT_FOG
 };
 
 const char* OUTPUT_NAMES[OUTPUT_COUNT] = {
   "HEAD_1",
   "HEAD_2",
-  "HORN",
   "AIR_CANNON",
-  "DOOR",
   "AIR_TICKLER",
+  "DOOR",
+  "HORN",
+  "CRACKLER",
+  "STROBE",
   "FOG",
-  "TV_1",
-  "TV_2"
 };
 
 // Current default mapping from the controller-side names
 const uint8_t OUTPUT_PINS[OUTPUT_COUNT] = {
-  4,   // HEAD_1
-  5,   // HEAD_2
-  9,   // HORN
+  4,   // HEAD_1 / Skinny
+  5,   // HEAD_2 / Hag
   6,   // AIR_CANNON
-  8,   // DOOR
   7,   // AIR_TICKLER
-  12,  // FOG
-  10,  // TV_1
-  11   // TV_2
+  8,   // DOOR
+  9,   // HORN / Ooga
+  10,  // CRACKLER
+  13,  // STROBE
+  22   // FOG
 };
 
 bool outputStates[OUTPUT_COUNT] = {false, false, false, false, false, false, false, false, false};

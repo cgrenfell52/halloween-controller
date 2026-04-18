@@ -134,6 +134,18 @@ Key config:
 - SERIAL_PORT = /dev/ttyACM0
 - BAUD_RATE = 115200
 
+Arduino pin layout:
+- HEAD_1 / Skinny = pin 4
+- HEAD_2 / Hag = pin 5
+- AIR_CANNON = pin 6
+- AIR_TICKLER = pin 7
+- DOOR = pin 8
+- HORN / Ooga horn = pin 9
+- CRACKLER = pin 10
+- STROBE = pin 13
+- FOG = pin 22
+- TV_1 and TV_2 are ignored for now
+
 ## Constraints
 
 - Do not move timing-critical logic from Arduino to Pi

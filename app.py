@@ -44,7 +44,7 @@ TRACKS = {}
 # CONFIG
 # -----------------------------
 USE_MOCK_ARDUINO = False
-SERIAL_PORT = "COM5"
+SERIAL_PORT = os.environ.get("HALLOWEEN_SERIAL_PORT", "/dev/ttyACM0")
 BAUD_RATE = 115200
 HOST = "0.0.0.0"
 PORT = 5000
@@ -57,23 +57,24 @@ PROTOCOL_VERSION = "PROP_CTRL_V2"
 OUTPUT_NAMES = [
     "HEAD_1",
     "HEAD_2",
-    "HORN",
     "AIR_CANNON",
-    "DOOR",
     "AIR_TICKLER",
+    "DOOR",
+    "HORN",
     "CRACKLER",
-    "FOG",
     "STROBE",
+    "FOG",
 ]
 
 SERVICE_BUTTONS = [
-    ("HEAD 1", "TOGGLE:HEAD_1"),
-    ("HEAD 2", "TOGGLE:HEAD_2"),
-    ("HORN", "TOGGLE:HORN"),
+    ("HEAD 1 / SKINNY", "TOGGLE:HEAD_1"),
+    ("HEAD 2 / HAG", "TOGGLE:HEAD_2"),
     ("AIR CANNON", "TOGGLE:AIR_CANNON"),
-    ("DOOR", "TOGGLE:DOOR"),
     ("AIR TICKLER", "TOGGLE:AIR_TICKLER"),
+    ("DOOR OPEN/CLOSE", "TOGGLE:DOOR"),
+    ("OOGA HORN", "TOGGLE:HORN"),
     ("CRACKLER", "TOGGLE:CRACKLER"),
+    ("STROBE", "TOGGLE:STROBE"),
     ("FOG", "TOGGLE:FOG"),
 ]
 
@@ -89,9 +90,9 @@ FUN_BUTTONS = [
 # SCENES
 # -----------------------------
 SCENES = {
-    "TRICK_HEAD_1": {"label": "Head 1 Trick", "duration_ms": 1200},
-    "TRICK_HEAD_2": {"label": "Head 2 Trick", "duration_ms": 1200},
-    "TRICK_HORN": {"label": "Horn Trick", "duration_ms": 900},
+    "TRICK_HEAD_1": {"label": "Head 1 / Skinny Trick", "duration_ms": 1200},
+    "TRICK_HEAD_2": {"label": "Head 2 / Hag Trick", "duration_ms": 1200},
+    "TRICK_HORN": {"label": "Ooga Horn Trick", "duration_ms": 900},
     "TRICK_AIR_CANNON": {"label": "Air Cannon Trick", "duration_ms": 500},
     "TRICK_BOTH_HEADS": {"label": "Both Heads Trick", "duration_ms": 2000},
     "DOOR_SEQUENCE": {"label": "Door Sequence", "duration_ms": 3700},
@@ -507,7 +508,7 @@ SERVICE_HTML = """
       {% endfor %}
     </div>
     <div class="mini" style="margin-top: 10px;">
-      STROBE is not shown here because it follows the DOOR relay on the Arduino.
+      TV outputs are ignored for now.
     </div>
   </div>
 
@@ -923,11 +924,6 @@ class MockArduino:
             self.outputs[output_name] = not self.outputs[output_name]
             lines.append(f"STATE:{output_name}:{'ON' if self.outputs[output_name] else 'OFF'}")
 
-            # Mirror Arduino behavior: STROBE follows DOOR when DOOR is addressed.
-            if output_name == "DOOR" and "STROBE" in self.outputs:
-                self.outputs["STROBE"] = self.outputs["DOOR"]
-                lines.append(f"STATE:STROBE:{'ON' if self.outputs['STROBE'] else 'OFF'}")
-
             self.system_state = "IDLE"
             self.current_action = "NONE"
             lines.append(f"DONE:{command}")
@@ -1144,9 +1140,9 @@ def play_trick_scene_audio(scene_name: str):
     play_audio("TRICK", channel_name="MAIN")
 
     if scene_name == "TRICK_HEAD_1":
-        play_audio("HAG", channel_name="HEAD_1")
+        play_audio("SKINNY", channel_name="HEAD_1")
     elif scene_name == "TRICK_HEAD_2":
-        play_audio("SKINNY", channel_name="HEAD_2")
+        play_audio("HAG", channel_name="HEAD_2")
 
     return True
 
