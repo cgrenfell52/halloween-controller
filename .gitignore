@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Virtual environments
+venv/
+.venv/
+
+# Local config and secrets
+.env
+*.local
+
+# Logs and runtime output
+*.log
+logs/
+
+# Editor and OS noise
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Arduino build output
+build/
+*.hex
+*.elf

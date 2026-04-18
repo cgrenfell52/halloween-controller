@@ -1,0 +1,142 @@
+# Project: Halloween Prop Controller
+
+## Instruction for Codex
+
+Read this document fully before making changes. 
+Follow architecture and constraints strictly.
+
+## Overview
+This is a Raspberry Pi + Arduino-based Halloween prop controller.
+
+- Raspberry Pi 5 runs a Flask web server
+- Controls GPIO buttons (TRICK/TREAT)
+- Plays audio via pygame
+- Communicates with Arduino over serial (PROP_CTRL_V2 protocol)
+- Arduino executes physical effects (relays, props)
+
+## Current Status
+- System boots automatically via systemd (halloween.service)
+- WiFi configured and working
+- Arduino connected at /dev/ttyACM0
+- Audio system working
+- Scene logic implemented and functional
+
+## Architecture
+Pi = controller (logic, UI, audio)
+Arduino = executor (hardware outputs)
+
+Commands:
+- RUN:<scene>
+- TOGGLE:<output>
+- SYS:<command>
+
+## Known Issues / Notes
+
+
+## Goals (Next Steps)
+- Expand Arduino scene logic
+- Add smarter trigger logic
+- Improve reliability
+
+## How to Run
+- App auto-starts via systemd
+- Manual run:
+  source venv/bin/activate
+  python app.py
+
+## Important Files
+- app.py → main controller logic
+- audio/ → sound effects
+- arduino/ → firmware
+
+## Serial Protocol (PROP_CTRL_V2)
+
+Controller (Pi) sends commands:
+- RUN:<scene>
+- TOGGLE:<output>
+- SYS:<command>
+
+Arduino responds with:
+- STATUS:<state>
+- STATUS:RUNNING_SCENE:<scene>
+- STATUS:RUNNING_SERVICE:<output>
+- STATE:<output>:ON/OFF
+- DONE:<command>
+- ERROR:<reason>
+
+Notes:
+- Controller waits for DONE or ERROR to complete a command
+- STATUS updates reflect current system state
+- Outputs must always report state changes
+
+## Scene Behavior
+
+Scenes are executed in two layers:
+
+1. Python (Pi):
+   - Selects scene
+   - Plays audio
+   - Sends RUN:<scene> to Arduino
+   - Manages sequencing (TRICK → DOOR, etc.)
+
+2. Arduino:
+   - Executes physical outputs
+   - Controls timing of relays/effects
+   - Reports completion via DONE:<scene>
+
+Important:
+- Python is responsible for orchestration
+- Arduino is responsible for timing-critical execution
+
+
+## Inputs
+
+- GPIO buttons connected to Pi:
+  - TRICK
+  - TREAT
+
+Behavior:
+- Button press triggers run_show(mode)
+- System ignores input if already running a scene
+- STOP command cancels active show immediately
+
+## System State Rules
+
+- Only one scene can run at a time
+- System must be IDLE before starting a new scene
+- STOP must immediately cancel:
+  - audio
+  - active scene
+  - Arduino outputs
+
+- Arduino must always return to a safe OFF state after STOP
+
+## Audio System
+
+- Audio is handled on the Pi using pygame
+- Multiple channels are used:
+  - MAIN (primary audio)
+  - BACKGROUND (idle/fog sounds)
+  - effect-specific channels
+
+- Audio must:
+  - not block scene execution
+  - be stoppable via STOP command
+
+## Environment
+
+- Runs on Raspberry Pi 5
+- Python runs inside a virtual environment (venv)
+- Service managed by systemd:
+  - file: /etc/systemd/system/halloween.service
+
+Key config:
+- SERIAL_PORT = /dev/ttyACM0
+- BAUD_RATE = 115200
+
+## Constraints
+
+- Do not move timing-critical logic from Arduino to Pi
+- Do not block the main thread in Flask
+- All serial communication must follow PROP_CTRL_V2 format
+- System must remain responsive to STOP at all times
