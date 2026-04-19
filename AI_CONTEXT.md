@@ -109,6 +109,7 @@ Generic trick audio:
 - Manual `RUN HEAD 1` should play `SKINNY` only.
 - Manual `RUN HEAD 2` should play `HAG` only.
 - Manual `RUN BOTH HEADS` should play `SKINNY + HAG` only.
+- Manual `RUN CRACKLER` should run the crackler physical scene only.
 - TREAT show plays `door.mp3` and `treat.mp3` at the same time.
 
 ## Current Physical Timings
@@ -145,6 +146,7 @@ Other timings:
 HEAD_1 / Skinny = 1.2s
 HEAD_2 / Hag    = 1.2s
 HORN            = 0.9s
+CRACKLER        = 0.9s
 BOTH_HEADS      = 2.0s
 ```
 

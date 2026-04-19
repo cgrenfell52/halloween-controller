@@ -22,6 +22,7 @@
     RUN:TRICK_HEAD_1
     RUN:TRICK_HEAD_2
     RUN:TRICK_HORN
+    RUN:TRICK_CRACKLER
     RUN:TRICK_AIR_CANNON
     RUN:TRICK_BOTH_HEADS
     RUN:DOOR_SEQUENCE
@@ -99,6 +100,7 @@ bool stopRequested = false;
 static const unsigned long DURATION_TRICK_HEAD_1    = 1200;
 static const unsigned long DURATION_TRICK_HEAD_2    = 1200;
 static const unsigned long DURATION_TRICK_HORN      = 900;
+static const unsigned long DURATION_TRICK_CRACKLER  = 900;
 static const unsigned long DURATION_TRICK_AIR       = 300;
 static const unsigned long DURATION_TRICK_BOTH      = 2000;
 static const unsigned long DURATION_DOOR_HOLD_TOTAL = 22000;
@@ -328,6 +330,15 @@ bool runScene_TRICK_HORN() {
   return ok;
 }
 
+bool runScene_TRICK_CRACKLER() {
+  setOutputRaw(OUT_CRACKLER, true);
+  sendStateByIndex(OUT_CRACKLER);
+  bool ok = waitWithPolling(DURATION_TRICK_CRACKLER);
+  setOutputRaw(OUT_CRACKLER, false);
+  sendStateByIndex(OUT_CRACKLER);
+  return ok;
+}
+
 bool runScene_TRICK_AIR_CANNON() {
   setOutputRaw(OUT_AIR_CANNON, true);
   sendStateByIndex(OUT_AIR_CANNON);
@@ -420,6 +431,7 @@ bool executeSceneByName(const String& sceneName) {
   if (sceneName.equalsIgnoreCase("TRICK_HEAD_1"))      return runScene_TRICK_HEAD_1();
   if (sceneName.equalsIgnoreCase("TRICK_HEAD_2"))      return runScene_TRICK_HEAD_2();
   if (sceneName.equalsIgnoreCase("TRICK_HORN"))        return runScene_TRICK_HORN();
+  if (sceneName.equalsIgnoreCase("TRICK_CRACKLER"))    return runScene_TRICK_CRACKLER();
   if (sceneName.equalsIgnoreCase("TRICK_AIR_CANNON"))  return runScene_TRICK_AIR_CANNON();
   if (sceneName.equalsIgnoreCase("TRICK_BOTH_HEADS"))  return runScene_TRICK_BOTH_HEADS();
   if (sceneName.equalsIgnoreCase("DOOR_SEQUENCE"))     return runScene_DOOR_SEQUENCE();

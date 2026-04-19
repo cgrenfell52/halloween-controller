@@ -194,6 +194,7 @@ FUN_BUTTONS = [
     ("HEAD 1", "RUN:TRICK_HEAD_1"),
     ("HEAD 2", "RUN:TRICK_HEAD_2"),
     ("HORN", "RUN:TRICK_HORN"),
+    ("CRACKLER", "RUN:TRICK_CRACKLER"),
     ("AIR CANNON", "RUN:TRICK_AIR_CANNON"),
     ("DOOR", "RUN:DOOR_SEQUENCE"),
 ]
@@ -205,6 +206,7 @@ SCENES = {
     "TRICK_HEAD_1": {"label": "Head 1 / Skinny Trick", "duration_ms": 1200},
     "TRICK_HEAD_2": {"label": "Head 2 / Hag Trick", "duration_ms": 1200},
     "TRICK_HORN": {"label": "Ooga Horn Trick", "duration_ms": 900},
+    "TRICK_CRACKLER": {"label": "Crackler Trick", "duration_ms": 900},
     "TRICK_AIR_CANNON": {"label": "Air Cannon Trick", "duration_ms": 300},
     "TRICK_BOTH_HEADS": {"label": "Both Heads Trick", "duration_ms": 2000},
     "DOOR_SEQUENCE": {"label": "Door Sequence", "duration_ms": 22000},
@@ -215,6 +217,7 @@ TRICK_SCENES = [
     "TRICK_HEAD_1",
     "TRICK_HEAD_2",
     "TRICK_HORN",
+    "TRICK_CRACKLER",
     "TRICK_AIR_CANNON",
     "TRICK_BOTH_HEADS",
 ]
@@ -223,6 +226,7 @@ SCENE_TEST_BUTTONS = [
     ("RUN HEAD 1", "RUN:TRICK_HEAD_1"),
     ("RUN HEAD 2", "RUN:TRICK_HEAD_2"),
     ("RUN HORN", "RUN:TRICK_HORN"),
+    ("RUN CRACKLER", "RUN:TRICK_CRACKLER"),
     ("RUN AIR CANNON", "RUN:TRICK_AIR_CANNON"),
     ("RUN BOTH HEADS", "RUN:TRICK_BOTH_HEADS"),
     ("RUN DOOR", "RUN:DOOR_SEQUENCE"),
