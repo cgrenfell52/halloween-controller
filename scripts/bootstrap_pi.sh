@@ -40,7 +40,11 @@ python3 -m venv venv
 
 echo "== Installing Arduino CLI =="
 if [ ! -x "$HOME/bin/arduino-cli" ]; then
-  curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
+  mkdir -p "$HOME/bin"
+  (
+    cd "$HOME"
+    curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
+  )
 fi
 export PATH="$HOME/bin:$PATH"
 
