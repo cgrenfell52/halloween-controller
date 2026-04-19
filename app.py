@@ -205,10 +205,10 @@ SCENES = {
     "TRICK_HEAD_1": {"label": "Head 1 / Skinny Trick", "duration_ms": 1200},
     "TRICK_HEAD_2": {"label": "Head 2 / Hag Trick", "duration_ms": 1200},
     "TRICK_HORN": {"label": "Ooga Horn Trick", "duration_ms": 900},
-    "TRICK_AIR_CANNON": {"label": "Air Cannon Trick", "duration_ms": 500},
+    "TRICK_AIR_CANNON": {"label": "Air Cannon Trick", "duration_ms": 300},
     "TRICK_BOTH_HEADS": {"label": "Both Heads Trick", "duration_ms": 2000},
-    "DOOR_SEQUENCE": {"label": "Door Sequence", "duration_ms": 3700},
-    "FOG_BURST": {"label": "Fog Burst", "duration_ms": 2000},
+    "DOOR_SEQUENCE": {"label": "Door Sequence", "duration_ms": 22000},
+    "FOG_BURST": {"label": "Fog Burst", "duration_ms": 10000},
 }
 
 TRICK_SCENES = [

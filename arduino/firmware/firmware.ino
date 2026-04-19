@@ -99,14 +99,13 @@ bool stopRequested = false;
 static const unsigned long DURATION_TRICK_HEAD_1    = 1200;
 static const unsigned long DURATION_TRICK_HEAD_2    = 1200;
 static const unsigned long DURATION_TRICK_HORN      = 900;
-static const unsigned long DURATION_TRICK_AIR       = 500;
+static const unsigned long DURATION_TRICK_AIR       = 300;
 static const unsigned long DURATION_TRICK_BOTH      = 2000;
-static const unsigned long DURATION_DOOR_AIR_PRE    = 500;
-static const unsigned long DURATION_DOOR_TICKLE_1   = 700;
-static const unsigned long DURATION_DOOR_TICKLE_GAP = 300;
-static const unsigned long DURATION_DOOR_TICKLE_2   = 700;
-static const unsigned long DURATION_DOOR_HOLD_FINAL = 1500;
-static const unsigned long DURATION_FOG_BURST       = 2000;
+static const unsigned long DURATION_DOOR_HOLD_TOTAL = 22000;
+static const unsigned long DURATION_DOOR_TICKLE_PRE = 10000;
+static const unsigned long DURATION_DOOR_TICKLE_ON  = 500;
+static const unsigned long DURATION_DOOR_TICKLE_GAP = 500;
+static const unsigned long DURATION_FOG_BURST       = 10000;
 
 // --------------------------------------------------
 // SERIAL BUFFER
@@ -351,50 +350,46 @@ bool runScene_TRICK_BOTH_HEADS() {
 }
 
 bool runScene_DOOR_SEQUENCE() {
-  setOutputRaw(OUT_AIR_CANNON, true);
-  sendStateByIndex(OUT_AIR_CANNON);
-  if (!waitWithPolling(DURATION_DOOR_AIR_PRE)) {
-    setOutputRaw(OUT_AIR_CANNON, false);
-    sendStateByIndex(OUT_AIR_CANNON);
-    return false;
-  }
-  setOutputRaw(OUT_AIR_CANNON, false);
-  sendStateByIndex(OUT_AIR_CANNON);
-
   setOutputRaw(OUT_DOOR, true);
   sendStateByIndex(OUT_DOOR);
 
-  setOutputRaw(OUT_AIR_TICKLER, true);
-  sendStateByIndex(OUT_AIR_TICKLER);
-  if (!waitWithPolling(DURATION_DOOR_TICKLE_1)) {
-    setOutputRaw(OUT_AIR_TICKLER, false);
+  if (!waitWithPolling(DURATION_DOOR_TICKLE_PRE)) {
     setOutputRaw(OUT_DOOR, false);
+    sendStateByIndex(OUT_DOOR);
+    return false;
+  }
+
+  for (uint8_t i = 0; i < 3; i++) {
+    setOutputRaw(OUT_AIR_TICKLER, true);
     sendStateByIndex(OUT_AIR_TICKLER);
-    sendStateByIndex(OUT_DOOR);
-    return false;
-  }
-  setOutputRaw(OUT_AIR_TICKLER, false);
-  sendStateByIndex(OUT_AIR_TICKLER);
+    if (!waitWithPolling(DURATION_DOOR_TICKLE_ON)) {
+      setOutputRaw(OUT_AIR_TICKLER, false);
+      setOutputRaw(OUT_DOOR, false);
+      sendStateByIndex(OUT_AIR_TICKLER);
+      sendStateByIndex(OUT_DOOR);
+      return false;
+    }
 
-  if (!waitWithPolling(DURATION_DOOR_TICKLE_GAP)) {
-    setOutputRaw(OUT_DOOR, false);
-    sendStateByIndex(OUT_DOOR);
-    return false;
-  }
-
-  setOutputRaw(OUT_AIR_TICKLER, true);
-  sendStateByIndex(OUT_AIR_TICKLER);
-  if (!waitWithPolling(DURATION_DOOR_TICKLE_2)) {
     setOutputRaw(OUT_AIR_TICKLER, false);
-    setOutputRaw(OUT_DOOR, false);
     sendStateByIndex(OUT_AIR_TICKLER);
-    sendStateByIndex(OUT_DOOR);
-    return false;
-  }
-  setOutputRaw(OUT_AIR_TICKLER, false);
-  sendStateByIndex(OUT_AIR_TICKLER);
 
-  if (!waitWithPolling(DURATION_DOOR_HOLD_FINAL)) {
+    if (i < 2 && !waitWithPolling(DURATION_DOOR_TICKLE_GAP)) {
+      setOutputRaw(OUT_DOOR, false);
+      sendStateByIndex(OUT_DOOR);
+      return false;
+    }
+  }
+
+  const unsigned long elapsedBeforeFinalHold =
+      DURATION_DOOR_TICKLE_PRE +
+      (3 * DURATION_DOOR_TICKLE_ON) +
+      (2 * DURATION_DOOR_TICKLE_GAP);
+  const unsigned long finalHold =
+      DURATION_DOOR_HOLD_TOTAL > elapsedBeforeFinalHold
+          ? DURATION_DOOR_HOLD_TOTAL - elapsedBeforeFinalHold
+          : 0;
+
+  if (finalHold > 0 && !waitWithPolling(finalHold)) {
     setOutputRaw(OUT_DOOR, false);
     sendStateByIndex(OUT_DOOR);
     return false;
