@@ -53,6 +53,7 @@ class FlaskRouteTests(unittest.TestCase):
         self.assertIn("Prop Control System", body)
         self.assertIn("Trigger Control", body)
         self.assertIn('data-main="TRICK"', body)
+        self.assertIn('data-command="RUN:TRICK_AIR_CANNON"', body)
         self.assertIn('data-command="SYS:STOP"', body)
 
     def test_service_page_renders_console_shell(self):
