@@ -1104,6 +1104,7 @@ def api_run_command():
     if not valid:
         return jsonify({"ok": False, "error": validation_error}), 400
 
+    log(f"WEB command requested: {command}")
     threading.Thread(target=run_manual_command, args=(command,), daemon=True).start()
     return jsonify({"ok": True, "command": command})
 

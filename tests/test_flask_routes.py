@@ -86,6 +86,13 @@ class FlaskRouteTests(unittest.TestCase):
         self.assertEqual(response.get_json(), {"ok": True, "command": "TOGGLE:HEAD_1"})
         self.assertEqual(self.wait_for_last_result(), "DONE:TOGGLE:HEAD_1")
         self.assertTrue(controller.state["outputs"]["HEAD_1"])
+        self.assertTrue(any("WEB command requested: TOGGLE:HEAD_1" in entry for entry in controller.state["log"]))
+
+    def test_service_button_commands_are_valid(self):
+        for _label, command in controller.SERVICE_BUTTONS:
+            with self.subTest(command=command):
+                valid, error = controller.validate_command(command)
+                self.assertTrue(valid, error)
 
     def test_run_command_dispatches_stop_and_latches_cancellation(self):
         controller.transact_command("TOGGLE:FOG")
