@@ -157,6 +157,11 @@ Audio startup:
 - HALLOWEEN_SYSTEM_VOLUME overrides the requested percentage
 - HALLOWEEN_SET_SYSTEM_VOLUME=0 disables startup volume changes
 
+Stereo audio split:
+- Left channel = voice / ServoDMX AutoTalk feed
+- Right channel = non-voice show audio / speaker feed
+- Do not mono-sum left and right channels together
+
 ## Constraints
 
 - Do not move timing-critical logic from Arduino to Pi

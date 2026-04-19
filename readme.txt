@@ -85,6 +85,18 @@ Runtime overrides:
 - HALLOWEEN_SYSTEM_VOLUME changes the requested system mixer volume percentage.
 - HALLOWEEN_SET_SYSTEM_VOLUME=0 disables startup system volume changes.
 
+## Stereo Audio Split
+
+Audio files in audio/ are stereo files with a hardware channel split:
+
+- Left channel: voice / ServoDMX AutoTalk feed
+- Right channel: non-voice show audio / speaker feed
+
+Route the left channel to the ServoDMX AutoTalk input and the right channel to
+the speaker system. Avoid mono-summing the two channels together, because that
+would send effect sounds into AutoTalk and voice-only cue audio into the speaker
+feed.
+
 ## Important Files
 
 - app.py: Main Flask controller, UI, serial communication, audio, and show logic.
