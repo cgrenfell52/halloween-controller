@@ -183,6 +183,17 @@ Important runtime configuration from the handoff:
 - SERIAL_PORT = /dev/ttyACM0
 - BAUD_RATE = 115200
 
+On Raspberry Pi 5, GPIO support should use the system packages:
+
+```bash
+sudo apt install -y python3-gpiozero python3-lgpio
+python3 -m venv --system-site-packages venv
+```
+
+Do not install lgpio through pip on the Pi. The apt package avoids local build
+tool requirements and gives gpiozero the pin factory it needs for GPIO17 and
+GPIO27.
+
 ## Development Notes
 
 Before making changes, read handoff.txt.

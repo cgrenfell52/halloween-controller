@@ -21,7 +21,7 @@ chmod 600 "$HOME/.ssh/authorized_keys"
 
 echo "== Installing system packages =="
 sudo apt update
-sudo apt install -y git curl python3-venv python3-pip
+sudo apt install -y git curl python3-venv python3-pip python3-gpiozero python3-lgpio
 
 echo "== Fetching project repo =="
 if [ -d "$REPO_DIR/.git" ]; then
@@ -34,7 +34,7 @@ fi
 cd "$REPO_DIR"
 
 echo "== Setting up Python venv =="
-python3 -m venv venv
+python3 -m venv --system-site-packages venv
 ./venv/bin/pip install -r requirements.txt
 ./venv/bin/python -m py_compile app.py
 
