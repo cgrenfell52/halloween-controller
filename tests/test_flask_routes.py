@@ -61,6 +61,7 @@ class FlaskRouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         body = response.get_data(as_text=True)
         self.assertIn("System State", body)
+        self.assertIn("Quiet Time", body)
         self.assertIn("Service Toggles", body)
         self.assertIn("Scene Tests", body)
         self.assertIn('data-command="SYS:PING"', body)
@@ -121,6 +122,36 @@ class FlaskRouteTests(unittest.TestCase):
         run_scene_index = next(i for i, entry in enumerate(log) if "MOCK SEND -> RUN:DOOR_SEQUENCE" in entry)
         self.assertLess(door_audio_index, run_scene_index)
         self.assertLess(treat_audio_index, run_scene_index)
+
+    def test_settings_route_updates_quiet_time(self):
+        old_settings = controller.settings.copy()
+        old_settings_file = controller.SETTINGS_FILE
+        settings_path = REPO_ROOT / "test-settings.local.json"
+        if settings_path.exists():
+            settings_path.unlink()
+
+        controller.SETTINGS_FILE = str(settings_path)
+        try:
+            response = self.client.post(
+                "/api/settings",
+                json={
+                    "quiet_mode_enabled": True,
+                    "quiet_start_time": "22:15",
+                    "quiet_end_time": "07:30",
+                },
+            )
+
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(response.get_json()["ok"])
+            self.assertEqual(controller.settings["quiet_start_time"], "22:15")
+            self.assertEqual(controller.settings["quiet_end_time"], "07:30")
+            self.assertTrue(settings_path.exists())
+        finally:
+            controller.settings.clear()
+            controller.settings.update(old_settings)
+            controller.SETTINGS_FILE = old_settings_file
+            if settings_path.exists():
+                settings_path.unlink()
 
     def test_password_auth_redirects_html_and_blocks_api(self):
         old_password = controller.ACCESS_PASSWORD

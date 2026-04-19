@@ -52,7 +52,37 @@
         <div><dt>GPIO Enabled</dt><dd id="gpio_enabled">false</dd></div>
         <div><dt>TRICK GPIO</dt><dd id="gpio_trick_pin">17</dd></div>
         <div><dt>TREAT GPIO</dt><dd id="gpio_treat_pin">27</dd></div>
+        <div><dt>Quiet Enabled</dt><dd id="quiet_mode_enabled">true</dd></div>
+        <div><dt>Quiet Active</dt><dd id="quiet_mode_active">false</dd></div>
+        <div><dt>Quiet Start</dt><dd id="quiet_start_time">21:00</dd></div>
+        <div><dt>Quiet End</dt><dd id="quiet_end_time">08:00</dd></div>
+        <div><dt>Available Tricks</dt><dd id="trick_bag_available_scenes">Unknown</dd></div>
       </dl>
+    </section>
+
+    <section class="panel" aria-labelledby="quiet-heading">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Schedule</p>
+          <h2 id="quiet-heading">Quiet Time</h2>
+        </div>
+      </div>
+      <form id="settings_form" class="settings-form" data-dirty="false">
+        <label class="check-row">
+          <input id="quiet_mode_enabled_input" type="checkbox" checked>
+          <span>Use quiet trick bag</span>
+        </label>
+        <label>
+          <span>Start</span>
+          <input id="quiet_start_time_input" type="time" value="21:00" required>
+        </label>
+        <label>
+          <span>End</span>
+          <input id="quiet_end_time_input" type="time" value="08:00" required>
+        </label>
+        <button class="console-btn" type="submit">SAVE QUIET TIME</button>
+        <p id="settings_status" class="settings-status">Saved</p>
+      </form>
     </section>
 
     <section class="panel" aria-labelledby="system-controls-heading">

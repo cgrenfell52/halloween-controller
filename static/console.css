@@ -305,6 +305,49 @@ h2 {
   margin-bottom: 16px;
 }
 
+.settings-form {
+  display: grid;
+  gap: 12px;
+}
+
+.settings-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.settings-form input[type="time"] {
+  min-height: 46px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  background: #202020;
+  font: inherit;
+}
+
+.settings-form .check-row {
+  display: flex;
+  min-height: 46px;
+  align-items: center;
+  gap: 10px;
+  text-transform: none;
+}
+
+.settings-form input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+}
+
+.settings-status {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .telemetry-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));

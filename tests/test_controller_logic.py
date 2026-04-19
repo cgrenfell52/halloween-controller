@@ -160,6 +160,56 @@ class ControllerLogicTests(unittest.TestCase):
 
         self.assertTrue(any("AUDIO DISABLED -> skipped TRICK on MAIN" in entry for entry in controller.state["log"]))
 
+    def test_quiet_time_filters_loud_trick_scenes(self):
+        old_settings = controller.settings.copy()
+        old_current_minutes = controller.current_minutes
+        try:
+            controller.settings.update(
+                {
+                    "quiet_mode_enabled": True,
+                    "quiet_start_time": "21:00",
+                    "quiet_end_time": "08:00",
+                }
+            )
+            controller.current_minutes = lambda: (22 * 60)
+
+            selected_scenes = {controller.choose_trick_scene() for _ in range(3)}
+
+            self.assertTrue(selected_scenes)
+            self.assertTrue(selected_scenes.isdisjoint(controller.QUIET_EXCLUDED_TRICK_SCENES))
+            self.assertEqual(set(controller.state["trick_bag_available_scenes"]), {
+                "TRICK_HEAD_1",
+                "TRICK_HEAD_2",
+                "TRICK_BOTH_HEADS",
+            })
+            self.assertTrue(controller.state["quiet_mode_active"])
+        finally:
+            controller.settings.clear()
+            controller.settings.update(old_settings)
+            controller.current_minutes = old_current_minutes
+
+    def test_regular_time_uses_full_trick_bag(self):
+        old_settings = controller.settings.copy()
+        old_current_minutes = controller.current_minutes
+        try:
+            controller.settings.update(
+                {
+                    "quiet_mode_enabled": True,
+                    "quiet_start_time": "21:00",
+                    "quiet_end_time": "08:00",
+                }
+            )
+            controller.current_minutes = lambda: (12 * 60)
+
+            controller.choose_trick_scene()
+
+            self.assertEqual(set(controller.state["trick_bag_available_scenes"]), set(controller.TRICK_SCENES))
+            self.assertFalse(controller.state["quiet_mode_active"])
+        finally:
+            controller.settings.clear()
+            controller.settings.update(old_settings)
+            controller.current_minutes = old_current_minutes
+
     def test_stop_command_cancels_show_and_turns_outputs_off(self):
         controller.transact_command("TOGGLE:HEAD_1")
         controller.transact_command("TOGGLE:FOG")

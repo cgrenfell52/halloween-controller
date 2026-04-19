@@ -1,6 +1,7 @@
 from datetime import timedelta
 import glob
 import hmac
+import json
 from flask import Flask, request, jsonify, render_template, redirect, session, url_for
 import os
 import random
@@ -157,6 +158,10 @@ PORT = 5000
 ACCESS_PASSWORD = os.environ.get("HALLOWEEN_ACCESS_PASSWORD", "")
 SESSION_SECRET = os.environ.get("HALLOWEEN_SECRET_KEY", ACCESS_PASSWORD or "halloween-dev-secret")
 SESSION_DAYS = int(os.environ.get("HALLOWEEN_SESSION_DAYS", "180"))
+SETTINGS_FILE = os.environ.get(
+    "HALLOWEEN_SETTINGS_FILE",
+    os.path.join(os.path.dirname(__file__), "settings.local.json"),
+)
 
 app.secret_key = SESSION_SECRET
 app.permanent_session_lifetime = timedelta(days=SESSION_DAYS)
@@ -222,6 +227,18 @@ TRICK_SCENES = [
     "TRICK_BOTH_HEADS",
 ]
 
+QUIET_EXCLUDED_TRICK_SCENES = {
+    "TRICK_HORN",
+    "TRICK_CRACKLER",
+    "TRICK_AIR_CANNON",
+}
+
+DEFAULT_SETTINGS = {
+    "quiet_mode_enabled": True,
+    "quiet_start_time": "21:00",
+    "quiet_end_time": "08:00",
+}
+
 SCENE_TEST_BUTTONS = [
     ("RUN HEAD 1", "RUN:TRICK_HEAD_1"),
     ("RUN HEAD 2", "RUN:TRICK_HEAD_2"),
@@ -244,6 +261,77 @@ ALLOWED_SYS_COMMANDS = {
 ALLOWED_TOGGLE_COMMANDS = {f"TOGGLE:{name}" for name in OUTPUT_NAMES}
 ALLOWED_RUN_COMMANDS = {f"RUN:{scene_name}" for scene_name in SCENES.keys()}
 ALLOWED_COMMANDS = ALLOWED_SYS_COMMANDS | ALLOWED_TOGGLE_COMMANDS | ALLOWED_RUN_COMMANDS
+
+
+def valid_time_string(value: str):
+    try:
+        hours_text, minutes_text = value.split(":", 1)
+        hours = int(hours_text)
+        minutes = int(minutes_text)
+    except (AttributeError, ValueError):
+        return False
+
+    return 0 <= hours <= 23 and 0 <= minutes <= 59
+
+
+def time_string_to_minutes(value: str):
+    hours_text, minutes_text = value.split(":", 1)
+    return (int(hours_text) * 60) + int(minutes_text)
+
+
+def is_quiet_window_active(now_minutes: int, start_time: str, end_time: str, enabled: bool = True):
+    if not enabled:
+        return False
+
+    start_minutes = time_string_to_minutes(start_time)
+    end_minutes = time_string_to_minutes(end_time)
+
+    if start_minutes == end_minutes:
+        return True
+
+    if start_minutes < end_minutes:
+        return start_minutes <= now_minutes < end_minutes
+
+    return now_minutes >= start_minutes or now_minutes < end_minutes
+
+
+def load_settings():
+    settings = DEFAULT_SETTINGS.copy()
+
+    try:
+        with open(SETTINGS_FILE, "r", encoding="utf-8") as settings_handle:
+            saved_settings = json.load(settings_handle)
+    except FileNotFoundError:
+        saved_settings = {}
+    except Exception as e:
+        print(f"SETTINGS WARNING -> failed to read settings: {e}", flush=True)
+        saved_settings = {}
+
+    if isinstance(saved_settings, dict):
+        settings.update(
+            {
+                key: saved_settings[key]
+                for key in DEFAULT_SETTINGS.keys()
+                if key in saved_settings
+            }
+        )
+
+    if not valid_time_string(settings["quiet_start_time"]):
+        settings["quiet_start_time"] = DEFAULT_SETTINGS["quiet_start_time"]
+    if not valid_time_string(settings["quiet_end_time"]):
+        settings["quiet_end_time"] = DEFAULT_SETTINGS["quiet_end_time"]
+    settings["quiet_mode_enabled"] = bool(settings["quiet_mode_enabled"])
+
+    return settings
+
+
+def save_settings(settings):
+    with open(SETTINGS_FILE, "w", encoding="utf-8") as settings_handle:
+        json.dump(settings, settings_handle, indent=2)
+        settings_handle.write("\n")
+
+
+settings = load_settings()
 
 # -----------------------------
 # GLOBAL STATE
@@ -271,6 +359,12 @@ state = {
     "gpio_enabled": False,
     "gpio_trick_pin": TRICK_GPIO_PIN,
     "gpio_treat_pin": TREAT_GPIO_PIN,
+    "quiet_mode_enabled": settings["quiet_mode_enabled"],
+    "quiet_mode_active": False,
+    "quiet_start_time": settings["quiet_start_time"],
+    "quiet_end_time": settings["quiet_end_time"],
+    "quiet_excluded_scenes": sorted(QUIET_EXCLUDED_TRICK_SCENES),
+    "trick_bag_available_scenes": TRICK_SCENES[:],
 }
 
 
@@ -299,6 +393,12 @@ def reset_runtime_state():
             "gpio_enabled": False,
             "gpio_trick_pin": TRICK_GPIO_PIN,
             "gpio_treat_pin": TREAT_GPIO_PIN,
+            "quiet_mode_enabled": settings["quiet_mode_enabled"],
+            "quiet_mode_active": False,
+            "quiet_start_time": settings["quiet_start_time"],
+            "quiet_end_time": settings["quiet_end_time"],
+            "quiet_excluded_scenes": sorted(QUIET_EXCLUDED_TRICK_SCENES),
+            "trick_bag_available_scenes": TRICK_SCENES[:],
         }
     )
 
@@ -331,6 +431,42 @@ def now_text():
     return time.strftime("%Y-%m-%d %H:%M:%S")
 
 
+def current_minutes():
+    now = time.localtime()
+    return (now.tm_hour * 60) + now.tm_min
+
+
+def quiet_mode_active():
+    return is_quiet_window_active(
+        current_minutes(),
+        settings["quiet_start_time"],
+        settings["quiet_end_time"],
+        settings["quiet_mode_enabled"],
+    )
+
+
+def available_trick_scenes():
+    if quiet_mode_active():
+        return [scene for scene in TRICK_SCENES if scene not in QUIET_EXCLUDED_TRICK_SCENES]
+    return TRICK_SCENES[:]
+
+
+def refresh_quiet_mode_state():
+    active = quiet_mode_active()
+    available_scenes = available_trick_scenes()
+    state.update(
+        {
+            "quiet_mode_enabled": settings["quiet_mode_enabled"],
+            "quiet_mode_active": active,
+            "quiet_start_time": settings["quiet_start_time"],
+            "quiet_end_time": settings["quiet_end_time"],
+            "quiet_excluded_scenes": sorted(QUIET_EXCLUDED_TRICK_SCENES),
+            "trick_bag_available_scenes": available_scenes,
+        }
+    )
+    return active, available_scenes
+
+
 def reset_fog_timer():
     state["next_fog_due_epoch"] = time.time() + (5 * 60)
 
@@ -338,10 +474,14 @@ def reset_fog_timer():
 def choose_trick_scene():
     global scene_bag
 
+    quiet_active, available_scenes = refresh_quiet_mode_state()
+    scene_bag = [scene for scene in scene_bag if scene in available_scenes]
+
     if not scene_bag:
-        scene_bag = TRICK_SCENES[:]
+        scene_bag = available_scenes[:]
         random.shuffle(scene_bag)
-        log(f"Refilled trick bag: {scene_bag}")
+        mode_text = "quiet" if quiet_active else "regular"
+        log(f"Refilled {mode_text} trick bag: {scene_bag}")
 
     scene = scene_bag.pop(0)
     log(f"Selected trick scene: {scene}")
@@ -1103,7 +1243,39 @@ def service():
 
 @app.route("/api/status")
 def api_status():
+    refresh_quiet_mode_state()
     return jsonify(state)
+
+
+@app.route("/api/settings", methods=["POST"])
+def api_settings():
+    global scene_bag
+
+    data = request.get_json(force=True)
+    quiet_enabled = bool(data.get("quiet_mode_enabled", False))
+    quiet_start_time = str(data.get("quiet_start_time", "")).strip()
+    quiet_end_time = str(data.get("quiet_end_time", "")).strip()
+
+    if not valid_time_string(quiet_start_time):
+        return jsonify({"ok": False, "error": "Invalid quiet start time"}), 400
+    if not valid_time_string(quiet_end_time):
+        return jsonify({"ok": False, "error": "Invalid quiet end time"}), 400
+
+    settings.update(
+        {
+            "quiet_mode_enabled": quiet_enabled,
+            "quiet_start_time": quiet_start_time,
+            "quiet_end_time": quiet_end_time,
+        }
+    )
+    save_settings(settings)
+    scene_bag = []
+    refresh_quiet_mode_state()
+    log(
+        "Quiet time settings updated: "
+        f"enabled={quiet_enabled}, start={quiet_start_time}, end={quiet_end_time}"
+    )
+    return jsonify({"ok": True, "settings": settings, "quiet_mode_active": state["quiet_mode_active"]})
 
 
 @app.route("/api/run_main", methods=["POST"])

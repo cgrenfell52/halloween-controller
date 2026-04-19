@@ -15,7 +15,11 @@ const stateFields = [
   "active_show_token",
   "gpio_enabled",
   "gpio_trick_pin",
-  "gpio_treat_pin"
+  "gpio_treat_pin",
+  "quiet_mode_enabled",
+  "quiet_mode_active",
+  "quiet_start_time",
+  "quiet_end_time"
 ];
 
 let requestInFlight = false;
@@ -133,11 +137,13 @@ function renderLog(lines) {
 function applyState(data) {
   stateFields.forEach((field) => setText(field, data[field]));
   setText("busy_until_text", formatBusyUntil(data.busy_until_epoch));
+  setText("trick_bag_available_scenes", (data.trick_bag_available_scenes || []).join(", "), "None");
   updateBadges(data);
   renderOutputTiles(data.outputs);
   applyToggleButtonStates(data.outputs);
   renderRecentScenes(data.recent_scenes);
   renderLog(data.log);
+  syncSettingsForm(data);
 }
 
 async function refreshStatus() {
@@ -194,6 +200,40 @@ async function runCommand(command) {
   }
 }
 
+function syncSettingsForm(data) {
+  const form = document.getElementById("settings_form");
+  if (!form || form.dataset.dirty === "true") return;
+
+  const quietEnabled = document.getElementById("quiet_mode_enabled_input");
+  const quietStart = document.getElementById("quiet_start_time_input");
+  const quietEnd = document.getElementById("quiet_end_time_input");
+
+  if (quietEnabled) quietEnabled.checked = Boolean(data.quiet_mode_enabled);
+  if (quietStart) quietStart.value = data.quiet_start_time || "21:00";
+  if (quietEnd) quietEnd.value = data.quiet_end_time || "08:00";
+}
+
+async function saveSettings(form) {
+  const quietEnabled = document.getElementById("quiet_mode_enabled_input");
+  const quietStart = document.getElementById("quiet_start_time_input");
+  const quietEnd = document.getElementById("quiet_end_time_input");
+  const status = document.getElementById("settings_status");
+
+  try {
+    await postJson("/api/settings", {
+      quiet_mode_enabled: Boolean(quietEnabled && quietEnabled.checked),
+      quiet_start_time: quietStart ? quietStart.value : "21:00",
+      quiet_end_time: quietEnd ? quietEnd.value : "08:00"
+    });
+    form.dataset.dirty = "false";
+    if (status) status.textContent = "Saved";
+    refreshStatus();
+  } catch (error) {
+    console.error("saveSettings error:", error);
+    if (status) status.textContent = error.message || "Save failed";
+  }
+}
+
 document.addEventListener("click", (event) => {
   const mainButton = event.target.closest("[data-main]");
   if (mainButton) {
@@ -205,6 +245,23 @@ document.addEventListener("click", (event) => {
   if (commandButton) {
     runCommand(commandButton.dataset.command);
   }
+});
+
+document.addEventListener("input", (event) => {
+  const form = event.target.closest("#settings_form");
+  if (form) {
+    form.dataset.dirty = "true";
+    const status = document.getElementById("settings_status");
+    if (status) status.textContent = "Unsaved";
+  }
+});
+
+document.addEventListener("submit", (event) => {
+  const form = event.target.closest("#settings_form");
+  if (!form) return;
+
+  event.preventDefault();
+  saveSettings(form);
 });
 
 refreshStatus();

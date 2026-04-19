@@ -10,6 +10,7 @@ venv/
 # Local config and secrets
 .env
 *.local
+settings.local.json
 
 # Logs and runtime output
 *.log
