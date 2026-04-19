@@ -103,8 +103,10 @@ static const unsigned long DURATION_TRICK_AIR       = 300;
 static const unsigned long DURATION_TRICK_BOTH      = 2000;
 static const unsigned long DURATION_DOOR_HOLD_TOTAL = 22000;
 static const unsigned long DURATION_DOOR_TICKLE_PRE = 10000;
-static const unsigned long DURATION_DOOR_TICKLE_ON  = 500;
-static const unsigned long DURATION_DOOR_TICKLE_GAP = 500;
+static const unsigned long DURATION_DOOR_TICKLE_ON_MIN  = 350;
+static const unsigned long DURATION_DOOR_TICKLE_ON_MAX  = 700;
+static const unsigned long DURATION_DOOR_TICKLE_GAP_MIN = 250;
+static const unsigned long DURATION_DOOR_TICKLE_GAP_MAX = 900;
 static const unsigned long DURATION_FOG_BURST       = 10000;
 
 // --------------------------------------------------
@@ -352,41 +354,45 @@ bool runScene_TRICK_BOTH_HEADS() {
 bool runScene_DOOR_SEQUENCE() {
   setOutputRaw(OUT_DOOR, true);
   sendStateByIndex(OUT_DOOR);
+  unsigned long doorElapsed = 0;
 
   if (!waitWithPolling(DURATION_DOOR_TICKLE_PRE)) {
     setOutputRaw(OUT_DOOR, false);
     sendStateByIndex(OUT_DOOR);
     return false;
   }
+  doorElapsed += DURATION_DOOR_TICKLE_PRE;
 
   for (uint8_t i = 0; i < 3; i++) {
+    unsigned long tickleOn = random(DURATION_DOOR_TICKLE_ON_MIN, DURATION_DOOR_TICKLE_ON_MAX + 1);
     setOutputRaw(OUT_AIR_TICKLER, true);
     sendStateByIndex(OUT_AIR_TICKLER);
-    if (!waitWithPolling(DURATION_DOOR_TICKLE_ON)) {
+    if (!waitWithPolling(tickleOn)) {
       setOutputRaw(OUT_AIR_TICKLER, false);
       setOutputRaw(OUT_DOOR, false);
       sendStateByIndex(OUT_AIR_TICKLER);
       sendStateByIndex(OUT_DOOR);
       return false;
     }
+    doorElapsed += tickleOn;
 
     setOutputRaw(OUT_AIR_TICKLER, false);
     sendStateByIndex(OUT_AIR_TICKLER);
 
-    if (i < 2 && !waitWithPolling(DURATION_DOOR_TICKLE_GAP)) {
-      setOutputRaw(OUT_DOOR, false);
-      sendStateByIndex(OUT_DOOR);
-      return false;
+    if (i < 2) {
+      unsigned long tickleGap = random(DURATION_DOOR_TICKLE_GAP_MIN, DURATION_DOOR_TICKLE_GAP_MAX + 1);
+      if (!waitWithPolling(tickleGap)) {
+        setOutputRaw(OUT_DOOR, false);
+        sendStateByIndex(OUT_DOOR);
+        return false;
+      }
+      doorElapsed += tickleGap;
     }
   }
 
-  const unsigned long elapsedBeforeFinalHold =
-      DURATION_DOOR_TICKLE_PRE +
-      (3 * DURATION_DOOR_TICKLE_ON) +
-      (2 * DURATION_DOOR_TICKLE_GAP);
   const unsigned long finalHold =
-      DURATION_DOOR_HOLD_TOTAL > elapsedBeforeFinalHold
-          ? DURATION_DOOR_HOLD_TOTAL - elapsedBeforeFinalHold
+      DURATION_DOOR_HOLD_TOTAL > doorElapsed
+          ? DURATION_DOOR_HOLD_TOTAL - doorElapsed
           : 0;
 
   if (finalHold > 0 && !waitWithPolling(finalHold)) {
