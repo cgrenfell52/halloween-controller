@@ -11,7 +11,10 @@ const stateFields = [
   "scene_active",
   "pending_fog",
   "show_cancelled",
-  "active_show_token"
+  "active_show_token",
+  "gpio_enabled",
+  "gpio_trick_pin",
+  "gpio_treat_pin"
 ];
 
 let requestInFlight = false;

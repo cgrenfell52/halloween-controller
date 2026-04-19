@@ -75,6 +75,11 @@ try:
 except ImportError:
     serial = None
 
+try:
+    from gpiozero import Button
+except ImportError:
+    Button = None
+
 app = Flask(__name__)
 
 TRACK_FILES = {
@@ -93,6 +98,10 @@ TRACKS = {}
 # -----------------------------
 USE_MOCK_ARDUINO = env_flag("HALLOWEEN_USE_MOCK_ARDUINO")
 MOCK_SCENE_DELAY_SCALE = float(os.environ.get("HALLOWEEN_MOCK_SCENE_DELAY_SCALE", "1"))
+GPIO_DISABLED = env_flag("HALLOWEEN_GPIO_DISABLED")
+TRICK_GPIO_PIN = int(os.environ.get("HALLOWEEN_TRICK_GPIO", "17"))
+TREAT_GPIO_PIN = int(os.environ.get("HALLOWEEN_TREAT_GPIO", "27"))
+GPIO_BOUNCE_TIME = float(os.environ.get("HALLOWEEN_GPIO_BOUNCE_TIME", "0.2"))
 SERIAL_PORT = os.environ.get("HALLOWEEN_SERIAL_PORT", "/dev/ttyACM0")
 BAUD_RATE = 115200
 HOST = "0.0.0.0"
@@ -200,6 +209,9 @@ state = {
     "log": [],
     "show_cancelled": False,
     "active_show_token": 0,
+    "gpio_enabled": False,
+    "gpio_trick_pin": TRICK_GPIO_PIN,
+    "gpio_treat_pin": TREAT_GPIO_PIN,
 }
 
 
@@ -224,6 +236,9 @@ def reset_runtime_state():
             "log": [],
             "show_cancelled": False,
             "active_show_token": 0,
+            "gpio_enabled": False,
+            "gpio_trick_pin": TRICK_GPIO_PIN,
+            "gpio_treat_pin": TREAT_GPIO_PIN,
         }
     )
 
@@ -236,6 +251,7 @@ serial_io_lock = threading.Lock()
 show_control_lock = threading.Lock()
 show_token_counter = 0
 audio_lock = threading.Lock()
+gpio_buttons = []
 
 AUDIO_CHANNELS = make_audio_channels()
 
@@ -829,6 +845,63 @@ def run_show(mode: str, show_token: int):
         maybe_run_pending_fog_after_scene()
 
 
+def start_show_request(mode: str, source: str):
+    mode = mode.strip().upper()
+
+    if mode not in {"TRICK", "TREAT"}:
+        state["last_result"] = f"ERROR:UNKNOWN_MODE:{mode}"
+        log(f"Ignoring unknown {source} show request: {mode}")
+        return None
+
+    if state["scene_active"] or state["system_status"] != "IDLE":
+        state["last_result"] = "ERROR:BUSY"
+        log(f"Busy, ignoring {source} {mode} request.")
+        return None
+
+    show_token = begin_new_show()
+    log(f"{source} trigger accepted: {mode} (token={show_token})")
+    threading.Thread(target=run_show, args=(mode, show_token), daemon=True).start()
+    return show_token
+
+
+def handle_gpio_trigger(mode: str):
+    start_show_request(mode, "GPIO")
+
+
+def setup_gpio_triggers():
+    global gpio_buttons
+
+    state["gpio_enabled"] = False
+    gpio_buttons = []
+
+    if GPIO_DISABLED:
+        log("GPIO triggers disabled by HALLOWEEN_GPIO_DISABLED.")
+        return False
+
+    if Button is None:
+        log("GPIO triggers unavailable: gpiozero is not installed.")
+        return False
+
+    try:
+        trick_button = Button(TRICK_GPIO_PIN, pull_up=True, bounce_time=GPIO_BOUNCE_TIME)
+        treat_button = Button(TREAT_GPIO_PIN, pull_up=True, bounce_time=GPIO_BOUNCE_TIME)
+
+        trick_button.when_pressed = lambda: handle_gpio_trigger("TRICK")
+        treat_button.when_pressed = lambda: handle_gpio_trigger("TREAT")
+
+        gpio_buttons = [trick_button, treat_button]
+        state["gpio_enabled"] = True
+        state["gpio_trick_pin"] = TRICK_GPIO_PIN
+        state["gpio_treat_pin"] = TREAT_GPIO_PIN
+        log(f"GPIO triggers enabled: TRICK=GPIO{TRICK_GPIO_PIN}, TREAT=GPIO{TREAT_GPIO_PIN}")
+        return True
+    except Exception as e:
+        gpio_buttons = []
+        state["gpio_enabled"] = False
+        log(f"GPIO triggers unavailable: {repr(e)}")
+        return False
+
+
 def run_manual_command(command: str):
     state["last_command"] = command
 
@@ -904,8 +977,10 @@ def api_run_main():
     if mode not in {"TRICK", "TREAT"}:
         return jsonify({"ok": False, "error": f"Invalid mode: {mode}"}), 400
 
-    show_token = begin_new_show()
-    threading.Thread(target=run_show, args=(mode, show_token), daemon=True).start()
+    show_token = start_show_request(mode, "WEB")
+    if show_token is None:
+        return jsonify({"ok": False, "error": state["last_result"]}), 409
+
     return jsonify({"ok": True, "mode": mode, "show_token": show_token})
 
 
@@ -925,6 +1000,7 @@ def api_run_command():
 if __name__ == "__main__":
     load_audio()
     connect_arduino()
+    setup_gpio_triggers()
     reset_fog_timer()
     threading.Thread(target=idle_fog_worker, daemon=True).start()
     log(f"Web app starting on http://{HOST}:{PORT}")

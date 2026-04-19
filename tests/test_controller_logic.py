@@ -129,6 +129,16 @@ class ControllerLogicTests(unittest.TestCase):
         self.assertEqual(controller.state["last_result"], "DONE:SYS:STOP")
         self.assertEqual(controller.state["system_status"], "IDLE")
 
+    def test_busy_show_request_does_not_replace_active_token(self):
+        token = controller.begin_new_show()
+        controller.state["scene_active"] = True
+        controller.state["system_status"] = "RUNNING_SCENE"
+
+        self.assertIsNone(controller.start_show_request("TREAT", "GPIO"))
+
+        self.assertEqual(controller.state["active_show_token"], token)
+        self.assertEqual(controller.state["last_result"], "ERROR:BUSY")
+
     def test_busy_mock_arduino_rejects_overlapping_scene(self):
         controller.arduino.system_state = "RUNNING_SCENE"
 

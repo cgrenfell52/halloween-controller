@@ -56,6 +56,25 @@ Current active output layout:
 
 TV_1 and TV_2 are not active right now.
 
+## Raspberry Pi Trigger Wiring
+
+The TRICK and TREAT triggers are dry-contact switches wired to Pi GPIO inputs
+with internal pull-up resistors enabled.
+
+- TRICK trigger: GPIO17, physical pin 11
+- TREAT trigger: GPIO27, physical pin 13
+- Shared trigger ground: any Pi GND pin, for example physical pin 9 or 14
+
+Wire each switch between its GPIO input and GND. Do not connect trigger wiring
+to 3.3V or 5V.
+
+Runtime overrides:
+
+- HALLOWEEN_GPIO_DISABLED=1 disables physical trigger inputs.
+- HALLOWEEN_TRICK_GPIO changes the TRICK GPIO number.
+- HALLOWEEN_TREAT_GPIO changes the TREAT GPIO number.
+- HALLOWEEN_GPIO_BOUNCE_TIME changes debounce time in seconds.
+
 ## Important Files
 
 - app.py: Main Flask controller, UI, serial communication, audio, and show logic.

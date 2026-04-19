@@ -146,6 +146,12 @@ Arduino pin layout:
 - FOG = pin 22
 - TV_1 and TV_2 are ignored for now
 
+Pi trigger wiring:
+- TRICK dry contact = GPIO17 / physical pin 11 to GND
+- TREAT dry contact = GPIO27 / physical pin 13 to GND
+- Shared trigger ground can use physical pin 9 or 14
+- Internal pull-ups are enabled in software; do not wire triggers to 3.3V or 5V
+
 ## Constraints
 
 - Do not move timing-critical logic from Arduino to Pi
