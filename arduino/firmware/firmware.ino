@@ -103,10 +103,11 @@ static const unsigned long DURATION_TRICK_AIR       = 300;
 static const unsigned long DURATION_TRICK_BOTH      = 2000;
 static const unsigned long DURATION_DOOR_HOLD_TOTAL = 22000;
 static const unsigned long DURATION_DOOR_TICKLE_PRE = 10000;
+static const uint8_t DOOR_TICKLE_COUNT = 5;
 static const unsigned long DURATION_DOOR_TICKLE_ON_MIN  = 350;
 static const unsigned long DURATION_DOOR_TICKLE_ON_MAX  = 700;
-static const unsigned long DURATION_DOOR_TICKLE_GAP_MIN = 250;
-static const unsigned long DURATION_DOOR_TICKLE_GAP_MAX = 900;
+static const unsigned long DURATION_DOOR_TICKLE_GAP_MIN = 500;
+static const unsigned long DURATION_DOOR_TICKLE_GAP_MAX = 4000;
 static const unsigned long DURATION_FOG_BURST       = 10000;
 
 // --------------------------------------------------
@@ -363,7 +364,7 @@ bool runScene_DOOR_SEQUENCE() {
   }
   doorElapsed += DURATION_DOOR_TICKLE_PRE;
 
-  for (uint8_t i = 0; i < 3; i++) {
+  for (uint8_t i = 0; i < DOOR_TICKLE_COUNT; i++) {
     unsigned long tickleOn = random(DURATION_DOOR_TICKLE_ON_MIN, DURATION_DOOR_TICKLE_ON_MAX + 1);
     setOutputRaw(OUT_AIR_TICKLER, true);
     sendStateByIndex(OUT_AIR_TICKLER);
@@ -379,7 +380,7 @@ bool runScene_DOOR_SEQUENCE() {
     setOutputRaw(OUT_AIR_TICKLER, false);
     sendStateByIndex(OUT_AIR_TICKLER);
 
-    if (i < 2) {
+    if (i < DOOR_TICKLE_COUNT - 1) {
       unsigned long tickleGap = random(DURATION_DOOR_TICKLE_GAP_MIN, DURATION_DOOR_TICKLE_GAP_MAX + 1);
       if (!waitWithPolling(tickleGap)) {
         setOutputRaw(OUT_DOOR, false);
