@@ -89,13 +89,13 @@ Runtime overrides:
 
 Audio files in audio/ are stereo files with a hardware channel split:
 
-- Left channel: voice / ServoDMX AutoTalk feed
-- Right channel: non-voice show audio / speaker feed
+- Left channel: non-voice show audio / speaker feed
+- Right channel: voice / ServoDMX AutoTalk feed
 
-Route the left channel to the ServoDMX AutoTalk input and the right channel to
-the speaker system. Avoid mono-summing the two channels together, because that
-would send effect sounds into AutoTalk and voice-only cue audio into the speaker
-feed.
+Route the left channel to the speaker system and the right channel to the
+ServoDMX AutoTalk input. Avoid mono-summing the two channels together, because
+that would send effect sounds into AutoTalk and voice-only cue audio into the
+speaker feed.
 
 ## Important Files
 

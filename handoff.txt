@@ -158,8 +158,8 @@ Audio startup:
 - HALLOWEEN_SET_SYSTEM_VOLUME=0 disables startup volume changes
 
 Stereo audio split:
-- Left channel = voice / ServoDMX AutoTalk feed
-- Right channel = non-voice show audio / speaker feed
+- Left channel = non-voice show audio / speaker feed
+- Right channel = voice / ServoDMX AutoTalk feed
 - Do not mono-sum left and right channels together
 
 ## Constraints
