@@ -787,12 +787,22 @@ def run_scene(scene_name: str, mode: str, show_token=None):
 def play_trick_scene_audio(scene_name: str):
     play_audio("TRICK", channel_name="MAIN")
 
-    if scene_name == "TRICK_HEAD_1":
+    if scene_name in {"TRICK_HEAD_1", "TRICK_BOTH_HEADS"}:
         play_audio("SKINNY", channel_name="HEAD_1")
-    elif scene_name == "TRICK_HEAD_2":
+
+    if scene_name in {"TRICK_HEAD_2", "TRICK_BOTH_HEADS"}:
         play_audio("HAG", channel_name="HEAD_2")
 
     return True
+
+
+def play_scene_test_audio(scene_name: str):
+    if scene_name.startswith("TRICK_"):
+        play_trick_scene_audio(scene_name)
+    elif scene_name == "DOOR_SEQUENCE":
+        play_audio("DOOR", channel_name="DOOR")
+    elif scene_name == "FOG_BURST":
+        play_audio("WELCOME", channel_name="BACKGROUND")
 
 def stop_audio_channel(channel_name: str):
     channel_name = channel_name.strip().upper()
@@ -876,17 +886,16 @@ def run_show(mode: str, show_token: int):
                 return
 
             play_audio("DOOR", channel_name="DOOR")
+            play_audio("TREAT", channel_name="MAIN")
 
             if not run_scene("DOOR_SEQUENCE", "TREAT", show_token=show_token):
                 return
 
             if is_show_cancelled(show_token):
                 state["last_result"] = "ERROR:SHOW_CANCELLED"
-                log("Show cancelled after door sequence, before treat audio.")
+                log("Show cancelled after door sequence.")
                 stop_all_audio()
                 return
-
-            play_audio("TREAT", channel_name="MAIN")
 
         else:
             state["last_result"] = "ERROR:UNKNOWN_MODE"
@@ -966,6 +975,7 @@ def run_manual_command(command: str):
         ok = transact_system_command(command)
     elif command.startswith("RUN:"):
         scene_name = command[4:]
+        play_scene_test_audio(scene_name)
         ok = run_scene(scene_name, "MANUAL_TEST")
     else:
         ok = transact_command(command)

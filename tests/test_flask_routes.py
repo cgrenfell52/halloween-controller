@@ -108,6 +108,12 @@ class FlaskRouteTests(unittest.TestCase):
         self.assertEqual(payload["mode"], "TREAT")
         self.assertEqual(self.wait_for_last_result(), "DONE:DOOR_SEQUENCE")
         self.assertEqual(controller.state["recent_scenes"][-1]["scene"], "DOOR_SEQUENCE")
+        log = controller.state["log"]
+        door_audio_index = next(i for i, entry in enumerate(log) if "AUDIO DISABLED -> skipped DOOR on DOOR" in entry)
+        treat_audio_index = next(i for i, entry in enumerate(log) if "AUDIO DISABLED -> skipped TREAT on MAIN" in entry)
+        run_scene_index = next(i for i, entry in enumerate(log) if "MOCK SEND -> RUN:DOOR_SEQUENCE" in entry)
+        self.assertLess(door_audio_index, run_scene_index)
+        self.assertLess(treat_audio_index, run_scene_index)
 
     def test_password_auth_redirects_html_and_blocks_api(self):
         old_password = controller.ACCESS_PASSWORD

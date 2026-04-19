@@ -117,6 +117,22 @@ class ControllerLogicTests(unittest.TestCase):
         self.assertEqual(controller.state["system_status"], "IDLE")
         self.assertEqual(controller.state["recent_scenes"][-1]["scene"], "TRICK_HEAD_1")
 
+    def test_manual_head_scenes_play_matching_audio_tracks(self):
+        controller.run_manual_command("RUN:TRICK_HEAD_1")
+        self.assertTrue(any("AUDIO DISABLED -> skipped SKINNY on HEAD_1" in entry for entry in controller.state["log"]))
+
+        controller.reset_runtime_state()
+        controller.arduino = controller.MockArduino()
+        controller.state["system_status"] = "IDLE"
+        controller.run_manual_command("RUN:TRICK_HEAD_2")
+        self.assertTrue(any("AUDIO DISABLED -> skipped HAG on HEAD_2" in entry for entry in controller.state["log"]))
+
+    def test_both_heads_scene_plays_both_head_audio_tracks(self):
+        controller.run_manual_command("RUN:TRICK_BOTH_HEADS")
+
+        self.assertTrue(any("AUDIO DISABLED -> skipped SKINNY on HEAD_1" in entry for entry in controller.state["log"]))
+        self.assertTrue(any("AUDIO DISABLED -> skipped HAG on HEAD_2" in entry for entry in controller.state["log"]))
+
     def test_stop_command_cancels_show_and_turns_outputs_off(self):
         controller.transact_command("TOGGLE:HEAD_1")
         controller.transact_command("TOGGLE:FOG")
