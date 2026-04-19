@@ -784,8 +784,9 @@ def run_scene(scene_name: str, mode: str, show_token=None):
     add_recent_scene(scene_name, mode)
     return transact_command(f"RUN:{scene_name}")
         
-def play_trick_scene_audio(scene_name: str):
-    play_audio("TRICK", channel_name="MAIN")
+def play_trick_scene_audio(scene_name: str, include_trick_track: bool = True):
+    if include_trick_track:
+        play_audio("TRICK", channel_name="MAIN")
 
     if scene_name in {"TRICK_HEAD_1", "TRICK_BOTH_HEADS"}:
         play_audio("SKINNY", channel_name="HEAD_1")
@@ -798,7 +799,7 @@ def play_trick_scene_audio(scene_name: str):
 
 def play_scene_test_audio(scene_name: str):
     if scene_name.startswith("TRICK_"):
-        play_trick_scene_audio(scene_name)
+        play_trick_scene_audio(scene_name, include_trick_track=False)
     elif scene_name == "DOOR_SEQUENCE":
         play_audio("DOOR", channel_name="DOOR")
     elif scene_name == "FOG_BURST":
