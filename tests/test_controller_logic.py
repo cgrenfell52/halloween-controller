@@ -78,6 +78,23 @@ class ControllerLogicTests(unittest.TestCase):
         self.assertFalse(valid)
         self.assertEqual(error, "ERROR:INVALID_COMMAND:RUN:NOT_A_SCENE")
 
+    def test_serial_port_candidates_include_detected_fallback_ports(self):
+        old_serial_port = controller.SERIAL_PORT
+        old_glob = controller.glob.glob
+        controller.SERIAL_PORT = "/dev/ttyACM0"
+        controller.glob.glob = lambda pattern: {
+            "/dev/ttyACM*": ["/dev/ttyACM1"],
+            "/dev/ttyUSB*": ["/dev/ttyUSB0"],
+        }.get(pattern, [])
+        try:
+            self.assertEqual(
+                controller.serial_port_candidates(),
+                ["/dev/ttyACM0", "/dev/ttyACM1", "/dev/ttyUSB0"],
+            )
+        finally:
+            controller.SERIAL_PORT = old_serial_port
+            controller.glob.glob = old_glob
+
     def test_apply_protocol_line_updates_ready_status_state_and_done(self):
         controller.state["busy_until_epoch"] = 12345
 

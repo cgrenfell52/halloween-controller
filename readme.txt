@@ -17,6 +17,7 @@ and reports state back to the controller.
 - Audio effects are stored in audio/.
 - The deployed system is intended to run automatically with systemd on the Pi.
 - The Arduino is expected at /dev/ttyACM0 on the Pi.
+- If /dev/ttyACM0 is missing, the app falls back through /dev/ttyACM* and /dev/ttyUSB*.
 - Serial baud rate is 115200.
 
 ## Architecture
@@ -209,6 +210,10 @@ Important runtime configuration from the handoff:
 
 - SERIAL_PORT = /dev/ttyACM0
 - BAUD_RATE = 115200
+
+The configured serial port is tried first. If the Arduino reconnects as a
+different USB serial device, such as /dev/ttyACM1, the app tries detected
+/dev/ttyACM* and /dev/ttyUSB* ports before reporting a connection failure.
 
 On Raspberry Pi 5, GPIO support should use the system packages:
 

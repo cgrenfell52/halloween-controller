@@ -1,4 +1,5 @@
 from datetime import timedelta
+import glob
 import hmac
 from flask import Flask, request, jsonify, render_template, redirect, session, url_for
 import os
@@ -246,6 +247,7 @@ ALLOWED_COMMANDS = ALLOWED_SYS_COMMANDS | ALLOWED_TOGGLE_COMMANDS | ALLOWED_RUN_
 state = {
     "arduino_connected": False,
     "arduino_mode": "MOCK" if USE_MOCK_ARDUINO else "SERIAL",
+    "arduino_serial_port": None,
     "protocol_version": PROTOCOL_VERSION,
     "arduino_protocol_version": "UNKNOWN",
     "system_status": "STARTING",
@@ -273,6 +275,7 @@ def reset_runtime_state():
         {
             "arduino_connected": False,
             "arduino_mode": "MOCK" if USE_MOCK_ARDUINO else "SERIAL",
+            "arduino_serial_port": None,
             "protocol_version": PROTOCOL_VERSION,
             "arduino_protocol_version": "UNKNOWN",
             "system_status": "STARTING",
@@ -643,6 +646,14 @@ class SerialArduino:
 # -----------------------------
 # COMMAND PIPELINE
 # -----------------------------
+def serial_port_candidates():
+    candidates = []
+    for port in [SERIAL_PORT, *sorted(glob.glob("/dev/ttyACM*")), *sorted(glob.glob("/dev/ttyUSB*"))]:
+        if port and port not in candidates:
+            candidates.append(port)
+    return candidates
+
+
 def handshake_with_arduino():
     if arduino is None:
         return False
@@ -665,17 +676,28 @@ def connect_arduino():
         if USE_MOCK_ARDUINO:
             arduino = MockArduino()
             state["arduino_connected"] = True
+            state["arduino_serial_port"] = "MOCK"
             state["system_status"] = "IDLE"
             state["current_action"] = "NONE"
             state["last_received_status"] = "STATUS:IDLE"
             log("Connected to mock Arduino.")
         else:
-            arduino = SerialArduino(SERIAL_PORT, BAUD_RATE)
+            errors = []
+            for port in serial_port_candidates():
+                try:
+                    arduino = SerialArduino(port, BAUD_RATE)
+                    state["arduino_serial_port"] = port
+                    break
+                except Exception as e:
+                    errors.append(f"{port}: {repr(e)}")
+            else:
+                raise RuntimeError("No Arduino serial port connected. Tried " + "; ".join(errors))
+
             state["arduino_connected"] = True
             state["system_status"] = "IDLE"
             state["current_action"] = "NONE"
             state["last_received_status"] = "STATUS:IDLE"
-            log(f"Connected to Arduino on {SERIAL_PORT} @ {BAUD_RATE}.")
+            log(f"Connected to Arduino on {state['arduino_serial_port']} @ {BAUD_RATE}.")
 
         handshake_with_arduino()
 

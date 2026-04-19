@@ -1,5 +1,6 @@
 const stateFields = [
   "arduino_mode",
+  "arduino_serial_port",
   "arduino_connected",
   "protocol_version",
   "arduino_protocol_version",

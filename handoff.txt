@@ -133,6 +133,7 @@ Behavior:
 Key config:
 - SERIAL_PORT = /dev/ttyACM0
 - BAUD_RATE = 115200
+- App tries SERIAL_PORT first, then detected /dev/ttyACM* and /dev/ttyUSB* ports
 
 Arduino pin layout:
 - HEAD_1 / Skinny = pin 4
