@@ -211,6 +211,7 @@ system_status: IDLE
 gpio_enabled: true
 gpio_trick_pin: 17
 gpio_treat_pin: 27
+gpio_bounce_time: 0.15
 ```
 
 ## Last Known Good
