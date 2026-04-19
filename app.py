@@ -1,4 +1,6 @@
-from flask import Flask, request, jsonify, render_template
+from datetime import timedelta
+import hmac
+from flask import Flask, request, jsonify, render_template, redirect, session, url_for
 import os
 import random
 import shutil
@@ -151,6 +153,12 @@ SERIAL_PORT = os.environ.get("HALLOWEEN_SERIAL_PORT", "/dev/ttyACM0")
 BAUD_RATE = 115200
 HOST = "0.0.0.0"
 PORT = 5000
+ACCESS_PASSWORD = os.environ.get("HALLOWEEN_ACCESS_PASSWORD", "")
+SESSION_SECRET = os.environ.get("HALLOWEEN_SECRET_KEY", ACCESS_PASSWORD or "halloween-dev-secret")
+SESSION_DAYS = int(os.environ.get("HALLOWEEN_SESSION_DAYS", "180"))
+
+app.secret_key = SESSION_SECRET
+app.permanent_session_lifetime = timedelta(days=SESSION_DAYS)
 
 PROTOCOL_VERSION = "PROP_CTRL_V2"
 
@@ -994,6 +1002,53 @@ def idle_fog_worker():
 # -----------------------------
 # ROUTES
 # -----------------------------
+def auth_enabled():
+    return bool(ACCESS_PASSWORD)
+
+
+def is_authenticated():
+    return not auth_enabled() or session.get("authenticated") is True
+
+
+@app.before_request
+def require_authentication():
+    if not auth_enabled() or is_authenticated():
+        return None
+
+    if request.endpoint in {"login", "static"}:
+        return None
+
+    if request.path.startswith("/api/"):
+        return jsonify({"ok": False, "error": "AUTH_REQUIRED"}), 401
+
+    return redirect(url_for("login", next=request.full_path))
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    error = None
+
+    if request.method == "POST":
+        password = request.form.get("password", "")
+        if hmac.compare_digest(password, ACCESS_PASSWORD):
+            session.clear()
+            session.permanent = True
+            session["authenticated"] = True
+            next_url = request.args.get("next") or url_for("index")
+            if not next_url.startswith("/"):
+                next_url = url_for("index")
+            return redirect(next_url)
+        error = "Wrong password"
+
+    return render_template("login.html", error=error)
+
+
+@app.route("/logout", methods=["POST"])
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
+
 @app.route("/")
 def index():
     return render_template(

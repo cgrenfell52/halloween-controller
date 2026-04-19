@@ -85,6 +85,21 @@ Runtime overrides:
 - HALLOWEEN_SYSTEM_VOLUME changes the requested system mixer volume percentage.
 - HALLOWEEN_SET_SYSTEM_VOLUME=0 disables startup system volume changes.
 
+## Web Access Password
+
+The web app can require a shared password before showing the operator page,
+service page, or API responses. This should be enabled before exposing the app
+with a public tunnel.
+
+Runtime settings:
+
+- HALLOWEEN_ACCESS_PASSWORD sets the shared site password.
+- HALLOWEEN_SECRET_KEY signs the long-lived browser session cookie.
+- HALLOWEEN_SESSION_DAYS changes how long browsers stay remembered.
+
+When HALLOWEEN_ACCESS_PASSWORD is unset, local development runs without a login
+screen.
+
 ## Stereo Audio Split
 
 Audio files in audio/ are stereo files with a hardware channel split:

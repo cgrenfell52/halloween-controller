@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <title>Halloween Prop Control Login</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="{{ url_for('static', filename='console.css') }}">
+</head>
+<body data-screen="login">
+  <main class="login-shell">
+    <section class="panel login-panel" aria-labelledby="login-heading">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Prop Control System</p>
+          <h1 id="login-heading">Enter Password</h1>
+        </div>
+      </div>
+
+      <form class="login-form" method="post">
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" autofocus required>
+        {% if error %}
+        <p class="login-error">{{ error }}</p>
+        {% endif %}
+        <button class="action-btn action-green" type="submit">Unlock</button>
+      </form>
+
+      <p class="login-note">This browser will stay unlocked after a successful login.</p>
+    </section>
+  </main>
+</body>
+</html>

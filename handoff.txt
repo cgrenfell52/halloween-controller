@@ -157,6 +157,11 @@ Audio startup:
 - HALLOWEEN_SYSTEM_VOLUME overrides the requested percentage
 - HALLOWEEN_SET_SYSTEM_VOLUME=0 disables startup volume changes
 
+Web access:
+- HALLOWEEN_ACCESS_PASSWORD enables password login for all UI/API routes
+- HALLOWEEN_SECRET_KEY signs remembered-browser sessions
+- HALLOWEEN_SESSION_DAYS controls remembered-browser lifetime
+
 Stereo audio split:
 - Left channel = non-voice show audio / speaker feed
 - Right channel = voice / ServoDMX AutoTalk feed

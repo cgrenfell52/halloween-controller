@@ -109,6 +109,37 @@ class FlaskRouteTests(unittest.TestCase):
         self.assertEqual(self.wait_for_last_result(), "DONE:DOOR_SEQUENCE")
         self.assertEqual(controller.state["recent_scenes"][-1]["scene"], "DOOR_SEQUENCE")
 
+    def test_password_auth_redirects_html_and_blocks_api(self):
+        old_password = controller.ACCESS_PASSWORD
+        controller.ACCESS_PASSWORD = "pumpkin"
+        try:
+            html_response = self.client.get("/")
+            self.assertEqual(html_response.status_code, 302)
+            self.assertIn("/login", html_response.headers["Location"])
+
+            api_response = self.client.get("/api/status")
+            self.assertEqual(api_response.status_code, 401)
+            self.assertEqual(api_response.get_json()["error"], "AUTH_REQUIRED")
+        finally:
+            controller.ACCESS_PASSWORD = old_password
+
+    def test_password_login_remembers_browser_session(self):
+        old_password = controller.ACCESS_PASSWORD
+        controller.ACCESS_PASSWORD = "pumpkin"
+        try:
+            login_response = self.client.post(
+                "/login",
+                data={"password": "pumpkin"},
+                follow_redirects=False,
+            )
+            self.assertEqual(login_response.status_code, 302)
+
+            response = self.client.get("/api/status")
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.get_json()["system_status"], "IDLE")
+        finally:
+            controller.ACCESS_PASSWORD = old_password
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -78,6 +78,10 @@ h2 {
   gap: 8px;
 }
 
+.logout-form {
+  margin: 0;
+}
+
 .navbtn {
   display: inline-flex;
   min-height: 42px;
@@ -89,11 +93,57 @@ h2 {
   color: var(--text);
   text-decoration: none;
   background: #202020;
+  cursor: pointer;
 }
 
 .navbtn.active {
   border-color: var(--cyan);
   background: #243735;
+}
+
+.login-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.login-panel {
+  width: min(420px, 100%);
+}
+
+.login-form {
+  display: grid;
+  gap: 12px;
+}
+
+.login-form label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.login-form input {
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  background: #202020;
+  font: inherit;
+}
+
+.login-error {
+  color: var(--red-strong);
+  font-weight: 700;
+}
+
+.login-note {
+  margin-top: 16px;
+  color: var(--muted);
 }
 
 .operator-shell,
