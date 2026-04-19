@@ -1,6 +1,8 @@
 from flask import Flask, request, jsonify, render_template
 import os
 import random
+import shutil
+import subprocess
 import threading
 import time
 
@@ -13,11 +15,52 @@ def env_flag(name: str, default: bool = False) -> bool:
 
 
 AUDIO_DISABLED = env_flag("HALLOWEEN_AUDIO_DISABLED")
+SET_SYSTEM_VOLUME = env_flag("HALLOWEEN_SET_SYSTEM_VOLUME", default=True)
+SYSTEM_VOLUME_PERCENT = int(os.environ.get("HALLOWEEN_SYSTEM_VOLUME", "100"))
 
 try:
     import pygame
 except ImportError:
     pygame = None
+
+
+def set_startup_system_volume():
+    if AUDIO_DISABLED or not SET_SYSTEM_VOLUME:
+        return
+
+    volume = max(0, min(100, SYSTEM_VOLUME_PERCENT))
+    commands = []
+
+    if shutil.which("pactl"):
+        commands.extend(
+            [
+                ["pactl", "set-sink-volume", "@DEFAULT_SINK@", f"{volume}%"],
+                ["pactl", "set-sink-mute", "@DEFAULT_SINK@", "0"],
+            ]
+        )
+
+    if shutil.which("amixer"):
+        for control in ("Master", "PCM", "Speaker", "Headphone"):
+            commands.append(["amixer", "-q", "sset", control, f"{volume}%", "unmute"])
+
+    success = False
+    for command in commands:
+        try:
+            result = subprocess.run(
+                command,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=3,
+                check=False,
+            )
+            success = success or result.returncode == 0
+        except Exception:
+            continue
+
+    if success:
+        print(f"AUDIO VOLUME -> requested system output volume {volume}%", flush=True)
+    else:
+        print("AUDIO VOLUME WARNING -> no system mixer command succeeded.", flush=True)
 
 
 def init_audio_mixer():
@@ -27,6 +70,8 @@ def init_audio_mixer():
     if pygame is None:
         print("AUDIO WARNING -> pygame is not installed; audio disabled.", flush=True)
         return False
+
+    set_startup_system_volume()
 
     try:
         pygame.mixer.init()

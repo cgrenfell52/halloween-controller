@@ -75,6 +75,16 @@ Runtime overrides:
 - HALLOWEEN_TREAT_GPIO changes the TREAT GPIO number.
 - HALLOWEEN_GPIO_BOUNCE_TIME changes debounce time in seconds.
 
+## Audio Volume
+
+On startup, the controller asks the Pi system mixer to set output volume to
+100 percent so final loudness can be adjusted on the external speakers.
+
+Runtime overrides:
+
+- HALLOWEEN_SYSTEM_VOLUME changes the requested system mixer volume percentage.
+- HALLOWEEN_SET_SYSTEM_VOLUME=0 disables startup system volume changes.
+
 ## Important Files
 
 - app.py: Main Flask controller, UI, serial communication, audio, and show logic.

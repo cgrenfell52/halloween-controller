@@ -152,6 +152,11 @@ Pi trigger wiring:
 - Shared trigger ground can use physical pin 9 or 14
 - Internal pull-ups are enabled in software; do not wire triggers to 3.3V or 5V
 
+Audio startup:
+- App requests 100 percent system mixer volume on startup
+- HALLOWEEN_SYSTEM_VOLUME overrides the requested percentage
+- HALLOWEEN_SET_SYSTEM_VOLUME=0 disables startup volume changes
+
 ## Constraints
 
 - Do not move timing-critical logic from Arduino to Pi
