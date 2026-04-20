@@ -768,24 +768,33 @@ class SerialArduino:
 
     def transact(self, command: str):
         with serial_io_lock:
-            self.ser.reset_input_buffer()
-            self.ser.write((command + "\n").encode("utf-8"))
-            self.ser.flush()
-            log(f"SERIAL SEND -> {command}")
+            try:
+                self.ser.reset_input_buffer()
+                self.ser.write((command + "\n").encode("utf-8"))
+                self.ser.flush()
+                log(f"SERIAL SEND -> {command}")
+            except Exception as e:
+                mark_arduino_disconnected(f"ERROR:SERIAL_IO:{repr(e)}")
+                return [state["last_result"]]
 
             lines = []
             deadline = time.time() + command_timeout_seconds(command)
             expected_terminal = expected_terminal_line(command)
 
             while time.time() < deadline:
-                raw = self.ser.readline().decode("utf-8", errors="ignore").strip()
-                if raw:
-                    lines.append(raw)
-                    log(f"SERIAL RECV <- {raw}")
-                    if raw.startswith("ERROR:") or (expected_terminal and raw == expected_terminal):
-                        break
-                else:
-                    time.sleep(0.05)
+                try:
+                    raw = self.ser.readline().decode("utf-8", errors="ignore").strip()
+                    if raw:
+                        lines.append(raw)
+                        log(f"SERIAL RECV <- {raw}")
+                        if raw.startswith("ERROR:") or (expected_terminal and raw == expected_terminal):
+                            break
+                    else:
+                        time.sleep(0.05)
+                except Exception as e:
+                    mark_arduino_disconnected(f"ERROR:SERIAL_IO:{repr(e)}")
+                    lines.append(state["last_result"])
+                    break
 
             return lines
 
@@ -816,7 +825,7 @@ def handshake_with_arduino():
     return False
 
 
-def connect_arduino():
+def connect_arduino(run_handshake: bool = True):
     global arduino
 
     try:
@@ -846,7 +855,8 @@ def connect_arduino():
             state["last_received_status"] = "STATUS:IDLE"
             log(f"Connected to Arduino on {state['arduino_serial_port']} @ {BAUD_RATE}.")
 
-        handshake_with_arduino()
+        if run_handshake:
+            handshake_with_arduino()
 
     except Exception as e:
         state["arduino_connected"] = False
@@ -854,6 +864,24 @@ def connect_arduino():
         state["current_action"] = "CONNECT_FAILED"
         state["last_result"] = f"ERROR:CONNECT_FAILED:{e}"
         log(f"Arduino connection failed: {repr(e)}")
+
+
+def mark_arduino_disconnected(error: str):
+    global arduino
+
+    try:
+        if arduino is not None and hasattr(arduino, "ser"):
+            arduino.ser.close()
+    except Exception:
+        pass
+
+    arduino = None
+    state["arduino_connected"] = False
+    state["system_status"] = "ERROR"
+    state["current_action"] = "SERIAL_IO"
+    state["last_result"] = error
+    clear_busy_marker()
+    log(error)
 
 
 def _process_command_lines(command: str, lines: list[str]):
@@ -908,7 +936,7 @@ def command_timeout_seconds(command: str):
     if command.startswith("RUN:"):
         scene_name = command[4:]
         duration_ms = SCENES.get(scene_name, {}).get("duration_ms", 0)
-        return max(3.0, (duration_ms / 1000.0) + 3.0)
+        return max(3.0, (duration_ms / 1000.0) + 12.0)
 
     return 3.0
 
@@ -921,6 +949,9 @@ def transact_command(command: str):
         return False
 
     with command_lock:
+        if arduino is None or not state["arduino_connected"]:
+            connect_arduino(run_handshake=False)
+
         if arduino is None:
             state["last_result"] = "ERROR:NO_ARDUINO"
             return False
@@ -937,6 +968,9 @@ def transact_system_command(command: str):
         return False
 
     with system_command_lock:
+        if arduino is None or not state["arduino_connected"]:
+            connect_arduino(run_handshake=False)
+
         if arduino is None:
             state["last_result"] = "ERROR:NO_ARDUINO"
             return False

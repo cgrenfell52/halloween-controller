@@ -80,6 +80,7 @@ class ControllerLogicTests(unittest.TestCase):
 
     def test_scene_transaction_timeout_includes_scene_duration(self):
         self.assertGreaterEqual(controller.command_timeout_seconds("RUN:FOG_BURST"), 13.0)
+        self.assertGreaterEqual(controller.command_timeout_seconds("RUN:DOOR_SEQUENCE"), 34.0)
         self.assertEqual(controller.expected_terminal_line("RUN:FOG_BURST"), "DONE:FOG_BURST")
         self.assertEqual(controller.command_timeout_seconds("SYS:PING"), 3.0)
 
