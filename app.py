@@ -22,6 +22,7 @@ AUDIO_DISABLED = env_flag("HALLOWEEN_AUDIO_DISABLED")
 SET_SYSTEM_VOLUME = env_flag("HALLOWEEN_SET_SYSTEM_VOLUME", default=True)
 SYSTEM_VOLUME_PERCENT = int(os.environ.get("HALLOWEEN_SYSTEM_VOLUME", "100"))
 SERIAL_RECONNECT_INTERVAL_SECONDS = float(os.environ.get("HALLOWEEN_SERIAL_RECONNECT_INTERVAL", "5"))
+VIDEO_DISABLED = env_flag("HALLOWEEN_VIDEO_DISABLED", default=(os.name == "nt"))
 
 try:
     import pygame
@@ -162,6 +163,18 @@ SESSION_DAYS = int(os.environ.get("HALLOWEEN_SESSION_DAYS", "180"))
 SETTINGS_FILE = os.environ.get(
     "HALLOWEEN_SETTINGS_FILE",
     os.path.join(os.path.dirname(__file__), "settings.local.json"),
+)
+VIDEO_FOLDER = os.path.join(os.path.dirname(__file__), "video")
+VIDEO_PLAYER = os.environ.get("HALLOWEEN_VIDEO_PLAYER", "mpv")
+VIDEO_DISPLAY = os.environ.get("HALLOWEEN_VIDEO_DISPLAY", ":0")
+VIDEO_XAUTHORITY = os.environ.get("HALLOWEEN_VIDEO_XAUTHORITY", "/home/candydisp/.Xauthority")
+VIDEO_AMBIENT_FILE = os.environ.get(
+    "HALLOWEEN_VIDEO_AMBIENT_FILE",
+    os.path.join(VIDEO_FOLDER, "ambient.mp4"),
+)
+VIDEO_TRIGGERED_FILE = os.environ.get(
+    "HALLOWEEN_VIDEO_TRIGGERED_FILE",
+    os.path.join(VIDEO_FOLDER, "triggered.mp4"),
 )
 
 app.secret_key = SESSION_SECRET
@@ -373,6 +386,12 @@ state = {
     "quiet_excluded_scenes": sorted(QUIET_EXCLUDED_TRICK_SCENES),
     "trick_bag_available_scenes": TRICK_SCENES[:],
     "last_trick_scene": None,
+    "video_enabled": not VIDEO_DISABLED,
+    "video_mode": "DISABLED" if VIDEO_DISABLED else "IDLE",
+    "video_current_file": None,
+    "video_last_event": "DISABLED" if VIDEO_DISABLED else "IDLE",
+    "video_last_error": None,
+    "video_player": VIDEO_PLAYER,
 }
 
 
@@ -414,6 +433,12 @@ def reset_runtime_state():
             "quiet_excluded_scenes": sorted(QUIET_EXCLUDED_TRICK_SCENES),
             "trick_bag_available_scenes": TRICK_SCENES[:],
             "last_trick_scene": None,
+            "video_enabled": not VIDEO_DISABLED,
+            "video_mode": "DISABLED" if VIDEO_DISABLED else "IDLE",
+            "video_current_file": None,
+            "video_last_event": "DISABLED" if VIDEO_DISABLED else "IDLE",
+            "video_last_error": None,
+            "video_player": VIDEO_PLAYER,
         }
     )
 
@@ -428,6 +453,9 @@ show_control_lock = threading.Lock()
 show_token_counter = 0
 audio_lock = threading.Lock()
 gpio_buttons = []
+video_lock = threading.Lock()
+ambient_video_process = None
+triggered_video_process = None
 
 AUDIO_CHANNELS = make_audio_channels()
 
@@ -441,6 +469,165 @@ def log(msg: str):
     state["log"].append(entry)
     state["log"] = state["log"][-200:]
     print(entry, flush=True)
+
+
+def set_video_state(mode: str, current_file=None, last_event=None, last_error=None):
+    state["video_mode"] = mode
+    state["video_current_file"] = current_file
+    if last_event is not None:
+        state["video_last_event"] = last_event
+    state["video_last_error"] = last_error
+
+
+def video_player_available():
+    return shutil.which(VIDEO_PLAYER) is not None
+
+
+def video_runtime_enabled():
+    return not VIDEO_DISABLED and video_player_available()
+
+
+def video_environment():
+    env = os.environ.copy()
+    env["DISPLAY"] = VIDEO_DISPLAY
+    if VIDEO_XAUTHORITY:
+        env["XAUTHORITY"] = VIDEO_XAUTHORITY
+    return env
+
+
+def build_video_command(file_path: str, loop: bool):
+    command = [
+        VIDEO_PLAYER,
+        "--no-audio",
+        "--x11-netwm=no",
+        "--geometry=3840x1080+0+0",
+        "--keepaspect-window=no",
+        "--no-border",
+        "--really-quiet",
+    ]
+    if loop:
+        command.append("--loop-file=inf")
+    command.append(file_path)
+    return command
+
+
+def stop_video_process(process, label: str):
+    if process is None:
+        return None
+
+    try:
+        if process.poll() is None:
+            process.terminate()
+            try:
+                process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=3)
+            log(f"VIDEO STOP -> {label}")
+    except Exception as e:
+        log(f"VIDEO WARNING -> Failed to stop {label}: {e}")
+
+    return None
+
+
+def launch_video_process(file_path: str, loop: bool, label: str):
+    if not os.path.exists(file_path):
+        set_video_state("ERROR", last_event=f"MISSING:{label}", last_error=f"Missing file: {file_path}")
+        log(f"VIDEO ERROR -> Missing {label.lower()} file: {file_path}")
+        return None
+
+    if not video_runtime_enabled():
+        reason = "disabled" if VIDEO_DISABLED else f"player not found: {VIDEO_PLAYER}"
+        set_video_state("DISABLED" if VIDEO_DISABLED else "ERROR", last_event=f"SKIPPED:{label}", last_error=reason)
+        log(f"VIDEO DISABLED -> skipped {label.lower()} playback ({reason})")
+        return None
+
+    try:
+        process = subprocess.Popen(
+            build_video_command(file_path, loop),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            env=video_environment(),
+        )
+        set_video_state(
+            "AMBIENT" if loop else "TRIGGERED",
+            current_file=os.path.basename(file_path),
+            last_event=f"STARTED:{label}",
+            last_error=None,
+        )
+        log(f"VIDEO START -> {label} ({os.path.basename(file_path)})")
+        return process
+    except Exception as e:
+        set_video_state("ERROR", last_event=f"FAILED:{label}", last_error=str(e))
+        log(f"VIDEO ERROR -> Failed to start {label.lower()} video: {e}")
+        return None
+
+
+def ensure_ambient_video():
+    global ambient_video_process
+
+    with video_lock:
+        if triggered_video_process is not None and triggered_video_process.poll() is None:
+            return False
+
+        if ambient_video_process is not None and ambient_video_process.poll() is None:
+            return True
+
+        ambient_video_process = launch_video_process(VIDEO_AMBIENT_FILE, loop=True, label="AMBIENT")
+        return ambient_video_process is not None
+
+
+def play_triggered_video_once():
+    global ambient_video_process, triggered_video_process
+
+    with video_lock:
+        ambient_video_process = stop_video_process(ambient_video_process, "AMBIENT")
+        triggered_video_process = stop_video_process(triggered_video_process, "TRIGGERED")
+        triggered_video_process = launch_video_process(VIDEO_TRIGGERED_FILE, loop=False, label="TRIGGERED")
+        if triggered_video_process is None:
+            ambient_video_process = launch_video_process(VIDEO_AMBIENT_FILE, loop=True, label="AMBIENT")
+            return False
+        return True
+
+
+def resume_ambient_video():
+    global ambient_video_process, triggered_video_process
+
+    with video_lock:
+        triggered_video_process = stop_video_process(triggered_video_process, "TRIGGERED")
+        if ambient_video_process is not None and ambient_video_process.poll() is None:
+            set_video_state(
+                "AMBIENT",
+                current_file=os.path.basename(VIDEO_AMBIENT_FILE),
+                last_event="RESUMED:AMBIENT",
+                last_error=None,
+            )
+            return True
+
+        ambient_video_process = launch_video_process(VIDEO_AMBIENT_FILE, loop=True, label="AMBIENT")
+        return ambient_video_process is not None
+
+
+def video_worker():
+    global ambient_video_process, triggered_video_process
+
+    while True:
+        time.sleep(1)
+
+        with video_lock:
+            if triggered_video_process is not None and triggered_video_process.poll() is not None:
+                exit_code = triggered_video_process.returncode
+                triggered_video_process = None
+                log(f"VIDEO COMPLETE -> TRIGGERED (exit={exit_code})")
+                ambient_video_process = launch_video_process(VIDEO_AMBIENT_FILE, loop=True, label="AMBIENT")
+                continue
+
+            if ambient_video_process is not None and ambient_video_process.poll() is not None:
+                exit_code = ambient_video_process.returncode
+                ambient_video_process = None
+                log(f"VIDEO WARNING -> Ambient loop exited (exit={exit_code})")
+
+        ensure_ambient_video()
 
 
 def now_text():
@@ -1140,6 +1327,7 @@ def run_show(mode: str, show_token: int):
         return
 
     state["scene_active"] = True
+    play_triggered_video = False
 
     try:
         if is_show_cancelled(show_token):
@@ -1174,6 +1362,8 @@ def run_show(mode: str, show_token: int):
             if not run_scene("DOOR_SEQUENCE", "TRICK", show_token=show_token):
                 return
 
+            play_triggered_video = True
+
         elif mode == "TREAT":
             trick_scene = choose_trick_scene()
             state["last_command"] = f"SHOW:{mode}:DOOR_SEQUENCE:{trick_scene}"
@@ -1201,9 +1391,15 @@ def run_show(mode: str, show_token: int):
             if not run_scene(trick_scene, "TREAT_TRICK", show_token=show_token):
                 return
 
+            play_triggered_video = True
+
         else:
             state["last_result"] = "ERROR:UNKNOWN_MODE"
             log(f"Unknown mode: {mode}")
+            return
+
+        if play_triggered_video and not is_show_cancelled(show_token):
+            play_triggered_video_once()
 
     finally:
         state["scene_active"] = False
@@ -1274,6 +1470,7 @@ def run_manual_command(command: str):
     if command in {"SYS:STOP", "SYS:RESET", "SYS:ALL_OFF"}:
         cancel_active_show(command)
         stop_all_audio()
+        resume_ambient_video()
         ok = transact_system_command(command)
     elif command in {"SYS:PING", "SYS:STATUS"}:
         ok = transact_system_command(command)
@@ -1462,5 +1659,7 @@ if __name__ == "__main__":
     reset_fog_timer()
     threading.Thread(target=serial_reconnect_worker, daemon=True).start()
     threading.Thread(target=idle_fog_worker, daemon=True).start()
+    threading.Thread(target=video_worker, daemon=True).start()
+    ensure_ambient_video()
     log(f"Web app starting on http://{HOST}:{PORT}")
     app.run(host=HOST, port=PORT, debug=False)

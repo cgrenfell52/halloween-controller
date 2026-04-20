@@ -198,6 +198,20 @@ class ControllerLogicTests(unittest.TestCase):
         self.assertTrue(any("AUDIO DISABLED -> skipped TRICK on MAIN" in entry for entry in controller.state["log"]))
         self.assertFalse(any("AUDIO DISABLED -> skipped TREAT on MAIN" in entry for entry in controller.state["log"]))
 
+    def test_trick_show_plays_triggered_video_after_door_sequence(self):
+        token = controller.begin_new_show()
+        calls = []
+        original = controller.play_triggered_video_once
+        controller.play_triggered_video_once = lambda: calls.append("TRIGGERED") or True
+
+        try:
+            controller.run_show("TRICK", token)
+        finally:
+            controller.play_triggered_video_once = original
+
+        self.assertEqual(calls, ["TRIGGERED"])
+        self.assertEqual(controller.state["recent_scenes"][-1]["scene"], "DOOR_SEQUENCE")
+
     def test_treat_show_runs_door_then_trick_without_trick_trigger_audio(self):
         token = controller.begin_new_show()
         controller.scene_bag = ["TRICK_HEAD_1"]
@@ -211,6 +225,22 @@ class ControllerLogicTests(unittest.TestCase):
         self.assertTrue(any("AUDIO DISABLED -> skipped TREAT on MAIN" in entry for entry in log))
         self.assertTrue(any("AUDIO DISABLED -> skipped SKINNY on HEAD_1" in entry for entry in log))
         self.assertFalse(any("AUDIO DISABLED -> skipped TRICK on MAIN" in entry for entry in log))
+        self.assertEqual(controller.state["recent_scenes"][-1]["scene"], "TRICK_HEAD_1")
+        self.assertEqual(controller.state["recent_scenes"][-1]["mode"], "TREAT_TRICK")
+
+    def test_treat_show_plays_triggered_video_after_final_trick_scene(self):
+        token = controller.begin_new_show()
+        controller.scene_bag = ["TRICK_HEAD_1"]
+        calls = []
+        original = controller.play_triggered_video_once
+        controller.play_triggered_video_once = lambda: calls.append("TRIGGERED") or True
+
+        try:
+            controller.run_show("TREAT", token)
+        finally:
+            controller.play_triggered_video_once = original
+
+        self.assertEqual(calls, ["TRIGGERED"])
         self.assertEqual(controller.state["recent_scenes"][-1]["scene"], "TRICK_HEAD_1")
         self.assertEqual(controller.state["recent_scenes"][-1]["mode"], "TREAT_TRICK")
 
@@ -289,6 +319,18 @@ class ControllerLogicTests(unittest.TestCase):
         self.assertTrue(all(enabled is False for enabled in controller.state["outputs"].values()))
         self.assertEqual(controller.state["last_result"], "DONE:SYS:STOP")
         self.assertEqual(controller.state["system_status"], "IDLE")
+
+    def test_stop_command_resumes_ambient_video(self):
+        calls = []
+        original = controller.resume_ambient_video
+        controller.resume_ambient_video = lambda: calls.append("AMBIENT") or True
+
+        try:
+            controller.run_manual_command("SYS:STOP")
+        finally:
+            controller.resume_ambient_video = original
+
+        self.assertEqual(calls, ["AMBIENT"])
 
     def test_busy_show_request_does_not_replace_active_token(self):
         token = controller.begin_new_show()
