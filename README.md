@@ -1,23 +1,77 @@
 # Halloween Prop Controller
 
-This project runs a Halloween TRICK/TREAT prop controller built around a Raspberry Pi 5 and an Arduino Mega.
+A network-connected Halloween attraction controller built on a Raspberry Pi 5 and an Arduino Mega. The system coordinates physical props, stereo audio, dual-screen video, GPIO trigger inputs, and a remote web control surface into one show-ready experience.
 
-The Pi handles:
+This repository contains the full control stack for a TRICK/TREAT installation where:
 
-- the Flask web UI
-- password-protected remote access
-- GPIO TRICK/TREAT triggers
-- audio playback
-- dual-TV video playback
-- show orchestration
-- serial communication and reconnect logic
+- the Raspberry Pi acts as the show director
+- the Arduino handles timing-critical relay logic
+- operators can trigger and service the system from a browser
+- two TVs run synchronized ambient and triggered visuals
+- physical props, audio, and video stay coordinated through one workflow
 
-The Arduino handles:
+## Overview
 
-- relay/output switching
-- timing-critical prop scenes
-- safe output shutdown
-- protocol state reporting back to the Pi
+At a high level, the project turns a collection of props and media devices into one integrated attraction controller:
+
+- web UI for remote operation and service controls
+- GPIO dry-contact TRICK/TREAT buttons on the Pi
+- stereo audio playback with a dedicated AutoTalk voice feed
+- dual-HDMI video playback across two 1080p TVs
+- Arduino scene execution for relays, pneumatics, and effects
+- password-protected remote access for trusted operators
+- serial reconnect and status recovery for better field reliability
+
+## Why This Setup Works
+
+The system is intentionally split into two layers:
+
+- **Raspberry Pi 5**: orchestration, UI, audio, video, GPIO, serial management
+- **Arduino Mega**: hard real-time-ish relay/output timing and safe hardware state transitions
+
+That split keeps the prop timing stable while still allowing the show logic, web UI, and media stack to evolve quickly.
+
+## System At A Glance
+
+| Layer | Responsibility |
+| --- | --- |
+| Raspberry Pi 5 | Web UI, password auth, trigger handling, audio, dual-TV video, show flow, serial reconnect |
+| Arduino Mega | Relay control, scene timing, output state reporting, STOP/RESET/ALL_OFF hardware safety |
+| Browser UI | Operator controls, service toggles, scene tests, status visibility |
+| Media Assets | Stereo audio cues plus side-by-side ambient/triggered video |
+
+## Architecture
+
+```mermaid
+flowchart LR
+    A["Browser UI"] --> B["Flask Controller on Pi 5"]
+    C["GPIO TRICK/TREAT Buttons"] --> B
+    B --> D["pygame Audio"]
+    B --> E["mpv Dual-TV Video"]
+    B --> F["Serial PROP_CTRL_V2"]
+    F --> G["Arduino Mega"]
+    G --> H["Relays / Door / Heads / Fog / Effects"]
+```
+
+## Live Capabilities
+
+- browser-based TRICK and TREAT operation
+- service toggles for individual hardware outputs
+- scene test controls for major effects
+- quiet-time filtering for louder trick scenes
+- serial health visibility through the API/UI
+- automatic ambient TV playback during idle periods
+- triggered TV playback at the end of completed show flows
+- password-protected public-facing control endpoint
+
+## Show Experience
+
+The installation supports two operator-facing modes:
+
+- **TRICK**: trick scene first, then door sequence, then triggered video
+- **TREAT**: door sequence first, then final trick scene, then triggered video
+
+This preserves the "no free candy" logic while keeping the audio, props, and TVs in one consistent sequence.
 
 ## Current Hardware Layout
 
@@ -66,6 +120,19 @@ Internal pull-ups are enabled in software. Do not apply external voltage to thes
 7. Return to looping ambient TV video.
 
 `STOP`, `RESET`, and `ALL_OFF` cancel the active show, stop audio, force outputs off, and restore ambient TV playback.
+
+## Reliability And Safety
+
+The controller currently includes:
+
+- serial port fallback across `/dev/ttyACM*` and `/dev/ttyUSB*`
+- startup handshake with `SYS:PING` and `SYS:STATUS`
+- automatic reconnect attempts after serial disconnect/error
+- serial health state exposed through `/api/status`
+- safe output reset behavior through `STOP`, `RESET`, and `ALL_OFF`
+- GPIO trigger debounce control
+- app-managed ambient video recovery
+- long-lived password-authenticated browser sessions
 
 ## Quiet Time
 
@@ -139,18 +206,6 @@ Arduino to Pi:
 
 `SYS:STATUS` reports the current system state, every output state, and ends with `DONE:SYS:STATUS`.
 
-## Reliability Features
-
-The controller currently includes:
-
-- serial port fallback across `/dev/ttyACM*` and `/dev/ttyUSB*`
-- startup handshake with `SYS:PING` and `SYS:STATUS`
-- serial reconnect worker after disconnect/error
-- serial health state exposed through `/api/status`
-- password-protected UI/API access
-- GPIO trigger debounce control
-- app-managed ambient video recovery
-
 ## Important Files
 
 - `app.py`: main controller app
@@ -195,6 +250,16 @@ Typical service behavior:
 - enables GPIO triggers
 - starts ambient video playback
 
+## Deployment Notes
+
+The repository is structured so the same codebase can support:
+
+- local development on Windows or other non-Pi systems
+- mock Arduino testing
+- Raspberry Pi deployment with live GPIO/audio/video/serial hardware
+
+On non-Pi development systems, video playback is disabled by default so the local environment does not try to launch the Pi display stack.
+
 ### Video/Desktop Requirements
 
 The current dual-TV playback depends on:
@@ -231,8 +296,6 @@ Run locally:
 python app.py
 ```
 
-On Windows and other non-Pi environments, video playback is disabled by default so local development does not try to launch the Pi TV stack.
-
 ## Environment Variables
 
 Common runtime overrides:
@@ -263,3 +326,14 @@ Common runtime overrides:
 - preserve STOP responsiveness
 - keep Python and firmware protocol compatibility aligned
 - treat the Pi as the show orchestrator and the Arduino as the hardware executor
+
+## Status
+
+This repository reflects the current working architecture of the live system, including:
+
+- Arduino Mega prop control
+- Pi-hosted Flask control UI
+- serial reconnect and state recovery
+- password-protected remote access
+- stereo split audio routing
+- dual-TV ambient and triggered video playback
