@@ -23,6 +23,10 @@ SET_SYSTEM_VOLUME = env_flag("HALLOWEEN_SET_SYSTEM_VOLUME", default=True)
 SYSTEM_VOLUME_PERCENT = int(os.environ.get("HALLOWEEN_SYSTEM_VOLUME", "100"))
 SERIAL_RECONNECT_INTERVAL_SECONDS = float(os.environ.get("HALLOWEEN_SERIAL_RECONNECT_INTERVAL", "5"))
 VIDEO_DISABLED = env_flag("HALLOWEEN_VIDEO_DISABLED", default=(os.name == "nt"))
+AUDIO_DRIVER = os.environ.get("HALLOWEEN_AUDIO_DRIVER", "").strip()
+AUDIO_DEVICE = os.environ.get("HALLOWEEN_AUDIO_DEVICE", "").strip()
+AUDIO_RUNTIME_DIR = os.environ.get("HALLOWEEN_AUDIO_RUNTIME_DIR", "").strip()
+AUDIO_PULSE_SERVER = os.environ.get("HALLOWEEN_PULSE_SERVER", "").strip()
 
 try:
     import pygame
@@ -35,6 +39,21 @@ def set_startup_system_volume():
         return
 
     volume = max(0, min(100, SYSTEM_VOLUME_PERCENT))
+    command_env = os.environ.copy()
+    runtime_dir = AUDIO_RUNTIME_DIR or command_env.get("XDG_RUNTIME_DIR")
+    if not runtime_dir and os.name != "nt":
+        runtime_dir = f"/run/user/{os.getuid()}"
+
+    if runtime_dir:
+        command_env["XDG_RUNTIME_DIR"] = runtime_dir
+
+    pulse_server = AUDIO_PULSE_SERVER or command_env.get("PULSE_SERVER")
+    if not pulse_server and runtime_dir:
+        pulse_server = f"unix:{runtime_dir}/pulse/native"
+
+    if pulse_server:
+        command_env["PULSE_SERVER"] = pulse_server
+
     commands = []
 
     if shutil.which("pactl"):
@@ -58,6 +77,7 @@ def set_startup_system_volume():
                 stderr=subprocess.DEVNULL,
                 timeout=3,
                 check=False,
+                env=command_env,
             )
             success = success or result.returncode == 0
         except Exception:
@@ -79,13 +99,63 @@ def init_audio_mixer():
 
     set_startup_system_volume()
 
-    try:
-        pygame.mixer.init()
-        pygame.mixer.set_num_channels(8)
-        return True
-    except Exception as e:
-        print(f"AUDIO WARNING -> mixer init failed; audio disabled: {e}", flush=True)
-        return False
+    candidate_drivers = [AUDIO_DRIVER] if AUDIO_DRIVER else ["pulseaudio", "alsa", ""]
+    original_driver = os.environ.get("SDL_AUDIODRIVER")
+    original_device = os.environ.get("AUDIODEV")
+    original_runtime = os.environ.get("XDG_RUNTIME_DIR")
+    original_pulse_server = os.environ.get("PULSE_SERVER")
+
+    runtime_dir = AUDIO_RUNTIME_DIR or original_runtime
+    if not runtime_dir and os.name != "nt":
+        runtime_dir = f"/run/user/{os.getuid()}"
+
+    pulse_server = AUDIO_PULSE_SERVER or original_pulse_server
+    if not pulse_server and runtime_dir:
+        pulse_server = f"unix:{runtime_dir}/pulse/native"
+
+    for driver_name in candidate_drivers:
+        try:
+            if driver_name:
+                os.environ["SDL_AUDIODRIVER"] = driver_name
+            elif original_driver is not None:
+                os.environ["SDL_AUDIODRIVER"] = original_driver
+            else:
+                os.environ.pop("SDL_AUDIODRIVER", None)
+
+            if AUDIO_DEVICE:
+                os.environ["AUDIODEV"] = AUDIO_DEVICE
+            elif original_device is not None:
+                os.environ["AUDIODEV"] = original_device
+            else:
+                os.environ.pop("AUDIODEV", None)
+
+            if driver_name == "pulseaudio":
+                if runtime_dir:
+                    os.environ["XDG_RUNTIME_DIR"] = runtime_dir
+                if pulse_server:
+                    os.environ["PULSE_SERVER"] = pulse_server
+            else:
+                if original_runtime is not None:
+                    os.environ["XDG_RUNTIME_DIR"] = original_runtime
+                if original_pulse_server is not None:
+                    os.environ["PULSE_SERVER"] = original_pulse_server
+
+            pygame.mixer.init()
+            pygame.mixer.set_num_channels(8)
+            backend = driver_name or "default"
+            device_text = AUDIO_DEVICE or "default"
+            print(f"AUDIO BACKEND -> {backend} ({device_text})", flush=True)
+            return True
+        except Exception as e:
+            backend = driver_name or "default"
+            print(f"AUDIO WARNING -> mixer init failed for {backend}: {e}", flush=True)
+            try:
+                pygame.mixer.quit()
+            except Exception:
+                pass
+
+    print("AUDIO WARNING -> mixer init failed; audio disabled.", flush=True)
+    return False
 
 
 class NullAudioChannel:
