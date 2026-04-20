@@ -36,6 +36,14 @@ class FlaskRouteTests(unittest.TestCase):
             time.sleep(0.01)
         return controller.state["last_result"]
 
+    def wait_for_result(self, expected_result, timeout_seconds=1):
+        deadline = time.time() + timeout_seconds
+        while time.time() < deadline:
+            if controller.state["last_result"] == expected_result:
+                return controller.state["last_result"]
+            time.sleep(0.01)
+        return controller.state["last_result"]
+
     def test_status_route_returns_controller_state(self):
         response = self.client.get("/api/status")
 
@@ -116,7 +124,7 @@ class FlaskRouteTests(unittest.TestCase):
         payload = response.get_json()
         self.assertTrue(payload["ok"])
         self.assertEqual(payload["mode"], "TREAT")
-        self.assertEqual(self.wait_for_last_result(), "DONE:TRICK_HEAD_1")
+        self.assertEqual(self.wait_for_result("DONE:TRICK_HEAD_1"), "DONE:TRICK_HEAD_1")
         self.assertEqual(controller.state["recent_scenes"][-2]["scene"], "DOOR_SEQUENCE")
         self.assertEqual(controller.state["recent_scenes"][-1]["scene"], "TRICK_HEAD_1")
         self.assertEqual(controller.state["recent_scenes"][-1]["mode"], "TREAT_TRICK")

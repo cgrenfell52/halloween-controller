@@ -245,6 +245,20 @@ class ControllerLogicTests(unittest.TestCase):
             controller.settings.update(old_settings)
             controller.current_minutes = old_current_minutes
 
+    def test_new_trick_bag_does_not_start_with_previous_scene(self):
+        old_shuffle = controller.random.shuffle
+        controller.random.shuffle = lambda scenes: None
+        try:
+            controller.state["last_trick_scene"] = controller.TRICK_SCENES[0]
+            controller.scene_bag = []
+
+            scene = controller.choose_trick_scene()
+
+            self.assertNotEqual(scene, controller.TRICK_SCENES[0])
+            self.assertEqual(controller.state["last_trick_scene"], scene)
+        finally:
+            controller.random.shuffle = old_shuffle
+
     def test_stop_command_cancels_show_and_turns_outputs_off(self):
         controller.transact_command("TOGGLE:HEAD_1")
         controller.transact_command("TOGGLE:FOG")

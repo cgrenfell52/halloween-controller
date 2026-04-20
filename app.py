@@ -365,6 +365,7 @@ state = {
     "quiet_end_time": settings["quiet_end_time"],
     "quiet_excluded_scenes": sorted(QUIET_EXCLUDED_TRICK_SCENES),
     "trick_bag_available_scenes": TRICK_SCENES[:],
+    "last_trick_scene": None,
 }
 
 
@@ -399,6 +400,7 @@ def reset_runtime_state():
             "quiet_end_time": settings["quiet_end_time"],
             "quiet_excluded_scenes": sorted(QUIET_EXCLUDED_TRICK_SCENES),
             "trick_bag_available_scenes": TRICK_SCENES[:],
+            "last_trick_scene": None,
         }
     )
 
@@ -471,6 +473,17 @@ def reset_fog_timer():
     state["next_fog_due_epoch"] = time.time() + (5 * 60)
 
 
+def avoid_repeat_at_bag_start():
+    last_scene = state.get("last_trick_scene")
+    if len(scene_bag) <= 1 or scene_bag[0] != last_scene:
+        return
+
+    for index, scene in enumerate(scene_bag[1:], start=1):
+        if scene != last_scene:
+            scene_bag[0], scene_bag[index] = scene_bag[index], scene_bag[0]
+            return
+
+
 def choose_trick_scene():
     global scene_bag
 
@@ -480,10 +493,12 @@ def choose_trick_scene():
     if not scene_bag:
         scene_bag = available_scenes[:]
         random.shuffle(scene_bag)
+        avoid_repeat_at_bag_start()
         mode_text = "quiet" if quiet_active else "regular"
         log(f"Refilled {mode_text} trick bag: {scene_bag}")
 
     scene = scene_bag.pop(0)
+    state["last_trick_scene"] = scene
     log(f"Selected trick scene: {scene}")
     return scene
 
