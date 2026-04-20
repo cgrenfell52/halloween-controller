@@ -656,6 +656,14 @@ def apply_protocol_line(line: str):
             state["scene_active"] = False
             state["system_status"] = "IDLE"
             state["current_action"] = "NONE"
+        elif line.startswith("ERROR:SERIAL_IO"):
+            state["arduino_connected"] = False
+            state["system_status"] = "ERROR"
+            state["current_action"] = "SERIAL_IO"
+            state["scene_active"] = False
+            clear_busy_marker()
+            for output_name in state["outputs"]:
+                state["outputs"][output_name] = False
         return
 
 

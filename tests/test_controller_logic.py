@@ -130,6 +130,21 @@ class ControllerLogicTests(unittest.TestCase):
         self.assertFalse(controller.state["scene_active"])
         self.assertEqual(controller.state["busy_until_epoch"], 0)
 
+    def test_serial_io_error_clears_stale_running_state(self):
+        controller.state["arduino_connected"] = True
+        controller.state["busy_until_epoch"] = 12345
+
+        controller.apply_protocol_line("STATUS:RUNNING_SCENE:DOOR_SEQUENCE")
+        controller.apply_protocol_line("STATE:DOOR:ON")
+        controller.apply_protocol_line("ERROR:SERIAL_IO:SerialException('device disconnected')")
+
+        self.assertFalse(controller.state["arduino_connected"])
+        self.assertEqual(controller.state["system_status"], "ERROR")
+        self.assertEqual(controller.state["current_action"], "SERIAL_IO")
+        self.assertFalse(controller.state["scene_active"])
+        self.assertEqual(controller.state["busy_until_epoch"], 0)
+        self.assertTrue(all(enabled is False for enabled in controller.state["outputs"].values()))
+
     def test_mock_ping_and_status_transactions_update_controller_state(self):
         self.assertTrue(controller.transact_system_command("SYS:PING"))
         self.assertEqual(controller.state["arduino_protocol_version"], "PROP_CTRL_V2")
