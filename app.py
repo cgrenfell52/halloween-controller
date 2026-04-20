@@ -292,8 +292,8 @@ FUN_BUTTONS = [
 # SCENES
 # -----------------------------
 SCENES = {
-    "TRICK_HEAD_1": {"label": "Head 1 / Skinny Trick", "duration_ms": 1200},
-    "TRICK_HEAD_2": {"label": "Head 2 / Hag Trick", "duration_ms": 1200},
+    "TRICK_HEAD_1": {"label": "Head 1 / Skinny Trick", "duration_ms": 2200},
+    "TRICK_HEAD_2": {"label": "Head 2 / Hag Trick", "duration_ms": 2200},
     "TRICK_HORN": {"label": "Ooga Horn Trick", "duration_ms": 900},
     "TRICK_CRACKLER": {"label": "Crackler Trick", "duration_ms": 900},
     "TRICK_AIR_CANNON": {"label": "Air Cannon Trick", "duration_ms": 300},

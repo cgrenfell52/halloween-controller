@@ -97,8 +97,8 @@ bool stopRequested = false;
 // --------------------------------------------------
 // SCENE TIMINGS
 // --------------------------------------------------
-static const unsigned long DURATION_TRICK_HEAD_1    = 1200;
-static const unsigned long DURATION_TRICK_HEAD_2    = 1200;
+static const unsigned long DURATION_TRICK_HEAD_1    = 2200;
+static const unsigned long DURATION_TRICK_HEAD_2    = 2200;
 static const unsigned long DURATION_TRICK_HORN      = 900;
 static const unsigned long DURATION_TRICK_CRACKLER  = 900;
 static const unsigned long DURATION_TRICK_AIR       = 300;
