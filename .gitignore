@@ -11,6 +11,7 @@ venv/
 .env
 *.local
 settings.local.json
+AI_CONTEXT.md
 
 # Logs and runtime output
 *.log
