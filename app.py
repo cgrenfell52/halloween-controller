@@ -1100,7 +1100,8 @@ def run_show(mode: str, show_token: int):
                 return
 
         elif mode == "TREAT":
-            state["last_command"] = f"SHOW:{mode}:DOOR_SEQUENCE"
+            trick_scene = choose_trick_scene()
+            state["last_command"] = f"SHOW:{mode}:DOOR_SEQUENCE:{trick_scene}"
 
             if is_show_cancelled(show_token):
                 state["last_result"] = "ERROR:SHOW_CANCELLED"
@@ -1116,8 +1117,13 @@ def run_show(mode: str, show_token: int):
 
             if is_show_cancelled(show_token):
                 state["last_result"] = "ERROR:SHOW_CANCELLED"
-                log("Show cancelled after door sequence.")
+                log("Show cancelled after door sequence, before treat trick.")
                 stop_all_audio()
+                return
+
+            play_trick_scene_audio(trick_scene, include_trick_track=False)
+
+            if not run_scene(trick_scene, "TREAT_TRICK", show_token=show_token):
                 return
 
         else:

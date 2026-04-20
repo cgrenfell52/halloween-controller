@@ -109,20 +109,27 @@ class FlaskRouteTests(unittest.TestCase):
         self.assertTrue(all(enabled is False for enabled in controller.state["outputs"].values()))
 
     def test_run_main_dispatches_treat_show(self):
+        controller.scene_bag = ["TRICK_HEAD_1"]
         response = self.client.post("/api/run_main", json={"mode": "TREAT"})
 
         self.assertEqual(response.status_code, 200)
         payload = response.get_json()
         self.assertTrue(payload["ok"])
         self.assertEqual(payload["mode"], "TREAT")
-        self.assertEqual(self.wait_for_last_result(), "DONE:DOOR_SEQUENCE")
-        self.assertEqual(controller.state["recent_scenes"][-1]["scene"], "DOOR_SEQUENCE")
+        self.assertEqual(self.wait_for_last_result(), "DONE:TRICK_HEAD_1")
+        self.assertEqual(controller.state["recent_scenes"][-2]["scene"], "DOOR_SEQUENCE")
+        self.assertEqual(controller.state["recent_scenes"][-1]["scene"], "TRICK_HEAD_1")
+        self.assertEqual(controller.state["recent_scenes"][-1]["mode"], "TREAT_TRICK")
         log = controller.state["log"]
         door_audio_index = next(i for i, entry in enumerate(log) if "AUDIO DISABLED -> skipped DOOR on DOOR" in entry)
         treat_audio_index = next(i for i, entry in enumerate(log) if "AUDIO DISABLED -> skipped TREAT on MAIN" in entry)
-        run_scene_index = next(i for i, entry in enumerate(log) if "MOCK SEND -> RUN:DOOR_SEQUENCE" in entry)
-        self.assertLess(door_audio_index, run_scene_index)
-        self.assertLess(treat_audio_index, run_scene_index)
+        door_scene_index = next(i for i, entry in enumerate(log) if "MOCK SEND -> RUN:DOOR_SEQUENCE" in entry)
+        trick_scene_index = next(i for i, entry in enumerate(log) if "MOCK SEND -> RUN:TRICK_HEAD_1" in entry)
+        self.assertLess(door_audio_index, door_scene_index)
+        self.assertLess(treat_audio_index, door_scene_index)
+        self.assertLess(door_scene_index, trick_scene_index)
+        self.assertTrue(any("AUDIO DISABLED -> skipped SKINNY on HEAD_1" in entry for entry in log))
+        self.assertFalse(any("AUDIO DISABLED -> skipped TRICK on MAIN" in entry for entry in log))
 
     def test_settings_route_updates_quiet_time(self):
         old_settings = controller.settings.copy()

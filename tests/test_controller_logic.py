@@ -177,6 +177,23 @@ class ControllerLogicTests(unittest.TestCase):
         controller.run_show("TRICK", token)
 
         self.assertTrue(any("AUDIO DISABLED -> skipped TRICK on MAIN" in entry for entry in controller.state["log"]))
+        self.assertFalse(any("AUDIO DISABLED -> skipped TREAT on MAIN" in entry for entry in controller.state["log"]))
+
+    def test_treat_show_runs_door_then_trick_without_trick_trigger_audio(self):
+        token = controller.begin_new_show()
+        controller.scene_bag = ["TRICK_HEAD_1"]
+
+        controller.run_show("TREAT", token)
+
+        log = controller.state["log"]
+        door_scene_index = next(i for i, entry in enumerate(log) if "MOCK SEND -> RUN:DOOR_SEQUENCE" in entry)
+        head_scene_index = next(i for i, entry in enumerate(log) if "MOCK SEND -> RUN:TRICK_HEAD_1" in entry)
+        self.assertLess(door_scene_index, head_scene_index)
+        self.assertTrue(any("AUDIO DISABLED -> skipped TREAT on MAIN" in entry for entry in log))
+        self.assertTrue(any("AUDIO DISABLED -> skipped SKINNY on HEAD_1" in entry for entry in log))
+        self.assertFalse(any("AUDIO DISABLED -> skipped TRICK on MAIN" in entry for entry in log))
+        self.assertEqual(controller.state["recent_scenes"][-1]["scene"], "TRICK_HEAD_1")
+        self.assertEqual(controller.state["recent_scenes"][-1]["mode"], "TREAT_TRICK")
 
     def test_quiet_time_filters_loud_trick_scenes(self):
         old_settings = controller.settings.copy()
