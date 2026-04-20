@@ -772,16 +772,17 @@ class SerialArduino:
             log(f"SERIAL SEND -> {command}")
 
             lines = []
-            quiet_loops = 0
+            deadline = time.time() + command_timeout_seconds(command)
+            expected_terminal = expected_terminal_line(command)
 
-            while quiet_loops < 12:
+            while time.time() < deadline:
                 raw = self.ser.readline().decode("utf-8", errors="ignore").strip()
                 if raw:
-                    quiet_loops = 0
                     lines.append(raw)
                     log(f"SERIAL RECV <- {raw}")
+                    if raw.startswith("ERROR:") or (expected_terminal and raw == expected_terminal):
+                        break
                 else:
-                    quiet_loops += 1
                     time.sleep(0.05)
 
             return lines
@@ -889,6 +890,25 @@ def _process_command_lines(command: str, lines: list[str]):
         state["last_result"] = "ERROR:UNEXPECTED_REPLY"
 
     return success
+
+
+def expected_terminal_line(command: str):
+    if command == "SYS:PING":
+        return "PONG"
+    if command.startswith("RUN:"):
+        return f"DONE:{command[4:]}"
+    if command.startswith("TOGGLE:") or command.startswith("SYS:"):
+        return f"DONE:{command}"
+    return None
+
+
+def command_timeout_seconds(command: str):
+    if command.startswith("RUN:"):
+        scene_name = command[4:]
+        duration_ms = SCENES.get(scene_name, {}).get("duration_ms", 0)
+        return max(3.0, (duration_ms / 1000.0) + 3.0)
+
+    return 3.0
 
 
 def transact_command(command: str):
