@@ -21,6 +21,7 @@ def env_flag(name: str, default: bool = False) -> bool:
 AUDIO_DISABLED = env_flag("HALLOWEEN_AUDIO_DISABLED")
 SET_SYSTEM_VOLUME = env_flag("HALLOWEEN_SET_SYSTEM_VOLUME", default=True)
 SYSTEM_VOLUME_PERCENT = int(os.environ.get("HALLOWEEN_SYSTEM_VOLUME", "100"))
+SERIAL_RECONNECT_INTERVAL_SECONDS = float(os.environ.get("HALLOWEEN_SERIAL_RECONNECT_INTERVAL", "5"))
 
 try:
     import pygame
@@ -347,6 +348,12 @@ state = {
     "last_command": "None",
     "last_result": None,
     "last_received_status": "BOOT",
+    "serial_reconnect_state": "IDLE",
+    "serial_reconnect_attempts": 0,
+    "serial_last_connected_epoch": 0,
+    "serial_last_heard_epoch": 0,
+    "serial_last_error": None,
+    "serial_last_error_epoch": 0,
     "scene_active": False,
     "pending_fog": False,
     "next_fog_due_epoch": 0,
@@ -382,6 +389,12 @@ def reset_runtime_state():
             "last_command": "None",
             "last_result": None,
             "last_received_status": "BOOT",
+            "serial_reconnect_state": "IDLE",
+            "serial_reconnect_attempts": 0,
+            "serial_last_connected_epoch": 0,
+            "serial_last_heard_epoch": 0,
+            "serial_last_error": None,
+            "serial_last_error_epoch": 0,
             "scene_active": False,
             "pending_fog": False,
             "next_fog_due_epoch": 0,
@@ -410,6 +423,7 @@ arduino = None
 command_lock = threading.Lock()
 system_command_lock = threading.Lock()
 serial_io_lock = threading.Lock()
+arduino_connect_lock = threading.Lock()
 show_control_lock = threading.Lock()
 show_token_counter = 0
 audio_lock = threading.Lock()
@@ -615,6 +629,8 @@ def is_show_cancelled(show_token: int):
 
 def apply_protocol_line(line: str):
     state["last_received_status"] = line
+    if not line.startswith("ERROR:SERIAL_IO"):
+        state["serial_last_heard_epoch"] = time.time()
 
     if line.startswith("READY:"):
         state["arduino_protocol_version"] = line.split(":", 1)[1]
@@ -658,6 +674,9 @@ def apply_protocol_line(line: str):
             state["current_action"] = "NONE"
         elif line.startswith("ERROR:SERIAL_IO"):
             state["arduino_connected"] = False
+            state["serial_reconnect_state"] = "WAITING"
+            state["serial_last_error"] = line
+            state["serial_last_error_epoch"] = time.time()
             state["system_status"] = "ERROR"
             state["current_action"] = "SERIAL_IO"
             state["scene_active"] = False
@@ -690,6 +709,9 @@ class MockArduino:
                 lines.append(f"STATUS:{self.system_state}")
             else:
                 lines.append(f"STATUS:{self.system_state}:{self.current_action}")
+            for key, enabled in self.outputs.items():
+                lines.append(f"STATE:{key}:{'ON' if enabled else 'OFF'}")
+            lines.append("DONE:SYS:STATUS")
             return lines
 
         if command == "SYS:STOP":
@@ -851,42 +873,53 @@ def handshake_with_arduino():
 def connect_arduino(run_handshake: bool = True):
     global arduino
 
-    try:
-        if USE_MOCK_ARDUINO:
-            arduino = MockArduino()
-            state["arduino_connected"] = True
-            state["arduino_serial_port"] = "MOCK"
-            state["system_status"] = "IDLE"
-            state["current_action"] = "NONE"
-            state["last_received_status"] = "STATUS:IDLE"
-            log("Connected to mock Arduino.")
-        else:
-            errors = []
-            for port in serial_port_candidates():
-                try:
-                    arduino = SerialArduino(port, BAUD_RATE)
-                    state["arduino_serial_port"] = port
-                    break
-                except Exception as e:
-                    errors.append(f"{port}: {repr(e)}")
+    with arduino_connect_lock:
+        try:
+            state["serial_reconnect_state"] = "CONNECTING"
+
+            if USE_MOCK_ARDUINO:
+                arduino = MockArduino()
+                state["arduino_connected"] = True
+                state["arduino_serial_port"] = "MOCK"
+                state["system_status"] = "IDLE"
+                state["current_action"] = "NONE"
+                state["last_received_status"] = "STATUS:IDLE"
+                log("Connected to mock Arduino.")
             else:
-                raise RuntimeError("No Arduino serial port connected. Tried " + "; ".join(errors))
+                errors = []
+                for port in serial_port_candidates():
+                    try:
+                        arduino = SerialArduino(port, BAUD_RATE)
+                        state["arduino_serial_port"] = port
+                        break
+                    except Exception as e:
+                        errors.append(f"{port}: {repr(e)}")
+                else:
+                    raise RuntimeError("No Arduino serial port connected. Tried " + "; ".join(errors))
 
-            state["arduino_connected"] = True
-            state["system_status"] = "IDLE"
-            state["current_action"] = "NONE"
-            state["last_received_status"] = "STATUS:IDLE"
-            log(f"Connected to Arduino on {state['arduino_serial_port']} @ {BAUD_RATE}.")
+                state["arduino_connected"] = True
+                state["system_status"] = "IDLE"
+                state["current_action"] = "NONE"
+                state["last_received_status"] = "STATUS:IDLE"
+                log(f"Connected to Arduino on {state['arduino_serial_port']} @ {BAUD_RATE}.")
 
-        if run_handshake:
-            handshake_with_arduino()
+            now = time.time()
+            state["serial_reconnect_state"] = "CONNECTED"
+            state["serial_last_connected_epoch"] = now
+            state["serial_last_heard_epoch"] = now
 
-    except Exception as e:
-        state["arduino_connected"] = False
-        state["system_status"] = "ERROR"
-        state["current_action"] = "CONNECT_FAILED"
-        state["last_result"] = f"ERROR:CONNECT_FAILED:{e}"
-        log(f"Arduino connection failed: {repr(e)}")
+            if run_handshake:
+                handshake_with_arduino()
+
+        except Exception as e:
+            state["arduino_connected"] = False
+            state["serial_reconnect_state"] = "FAILED"
+            state["serial_last_error"] = f"ERROR:CONNECT_FAILED:{repr(e)}"
+            state["serial_last_error_epoch"] = time.time()
+            state["system_status"] = "ERROR"
+            state["current_action"] = "CONNECT_FAILED"
+            state["last_result"] = f"ERROR:CONNECT_FAILED:{e}"
+            log(f"Arduino connection failed: {repr(e)}")
 
 
 def mark_arduino_disconnected(error: str):
@@ -900,11 +933,30 @@ def mark_arduino_disconnected(error: str):
 
     arduino = None
     state["arduino_connected"] = False
+    state["serial_reconnect_state"] = "WAITING"
+    state["serial_last_error"] = error
+    state["serial_last_error_epoch"] = time.time()
     state["system_status"] = "ERROR"
     state["current_action"] = "SERIAL_IO"
     state["last_result"] = error
     clear_busy_marker()
     log(error)
+
+
+def serial_reconnect_worker():
+    if USE_MOCK_ARDUINO:
+        return
+
+    while True:
+        time.sleep(SERIAL_RECONNECT_INTERVAL_SECONDS)
+
+        if state["arduino_connected"]:
+            continue
+
+        state["serial_reconnect_attempts"] += 1
+        state["serial_reconnect_state"] = "ATTEMPTING"
+        log(f"Arduino reconnect attempt {state['serial_reconnect_attempts']}.")
+        connect_arduino(run_handshake=True)
 
 
 def _process_command_lines(command: str, lines: list[str]):
@@ -1329,7 +1381,18 @@ def service():
 @app.route("/api/status")
 def api_status():
     refresh_quiet_mode_state()
-    return jsonify(state)
+    payload = dict(state)
+    now = time.time()
+    payload["serial_last_heard_seconds_ago"] = (
+        round(now - state["serial_last_heard_epoch"], 1) if state["serial_last_heard_epoch"] else None
+    )
+    payload["serial_last_connected_seconds_ago"] = (
+        round(now - state["serial_last_connected_epoch"], 1) if state["serial_last_connected_epoch"] else None
+    )
+    payload["serial_last_error_seconds_ago"] = (
+        round(now - state["serial_last_error_epoch"], 1) if state["serial_last_error_epoch"] else None
+    )
+    return jsonify(payload)
 
 
 @app.route("/api/settings", methods=["POST"])
@@ -1397,6 +1460,7 @@ if __name__ == "__main__":
     connect_arduino()
     setup_gpio_triggers()
     reset_fog_timer()
+    threading.Thread(target=serial_reconnect_worker, daemon=True).start()
     threading.Thread(target=idle_fog_worker, daemon=True).start()
     log(f"Web app starting on http://{HOST}:{PORT}")
     app.run(host=HOST, port=PORT, debug=False)

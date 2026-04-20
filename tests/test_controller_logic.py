@@ -150,8 +150,12 @@ class ControllerLogicTests(unittest.TestCase):
         self.assertEqual(controller.state["arduino_protocol_version"], "PROP_CTRL_V2")
         self.assertEqual(controller.state["last_result"], "PONG")
 
+        controller.arduino.outputs["FOG"] = True
         self.assertTrue(controller.transact_system_command("SYS:STATUS"))
         self.assertEqual(controller.state["system_status"], "IDLE")
+        self.assertEqual(controller.state["last_result"], "DONE:SYS:STATUS")
+        self.assertTrue(controller.state["outputs"]["FOG"])
+        self.assertGreater(controller.state["serial_last_heard_epoch"], 0)
 
     def test_mock_toggle_transaction_updates_output_state(self):
         self.assertTrue(controller.transact_command("TOGGLE:HEAD_1"))

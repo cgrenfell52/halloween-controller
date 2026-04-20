@@ -240,6 +240,8 @@ void handleSysPing() {
 
 void handleSysStatus() {
   sendStatus();
+  sendAllStates();
+  sendLine("DONE:SYS:STATUS");
 }
 
 void handleSysStop() {

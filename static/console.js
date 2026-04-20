@@ -9,6 +9,9 @@ const stateFields = [
   "last_command",
   "last_result",
   "last_received_status",
+  "serial_reconnect_state",
+  "serial_reconnect_attempts",
+  "serial_last_error",
   "scene_active",
   "pending_fog",
   "show_cancelled",
@@ -64,6 +67,11 @@ function formatBusyUntil(epochValue) {
   if (!epochValue || epochValue <= 0) return "None";
   const remaining = Math.max(0, epochValue - Date.now() / 1000);
   return `${remaining.toFixed(1)}s remaining`;
+}
+
+function formatAge(seconds) {
+  if (seconds === null || seconds === undefined) return "Never";
+  return `${Number(seconds).toFixed(1)}s ago`;
 }
 
 function renderOutputTiles(outputs) {
@@ -137,6 +145,9 @@ function renderLog(lines) {
 function applyState(data) {
   stateFields.forEach((field) => setText(field, data[field]));
   setText("busy_until_text", formatBusyUntil(data.busy_until_epoch));
+  setText("serial_last_heard_text", formatAge(data.serial_last_heard_seconds_ago));
+  setText("serial_last_connected_text", formatAge(data.serial_last_connected_seconds_ago));
+  setText("serial_last_error_text", formatAge(data.serial_last_error_seconds_ago));
   setText("trick_bag_available_scenes", (data.trick_bag_available_scenes || []).join(", "), "None");
   updateBadges(data);
   renderOutputTiles(data.outputs);

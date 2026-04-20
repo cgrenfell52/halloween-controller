@@ -67,6 +67,11 @@ class ProtocolContractTests(unittest.TestCase):
             with self.subTest(command=command):
                 self.assertIn(command, FIRMWARE_SOURCE)
 
+    def test_status_command_reports_outputs_and_done_marker(self):
+        self.assertIn("void handleSysStatus()", FIRMWARE_SOURCE)
+        self.assertIn("sendAllStates();", FIRMWARE_SOURCE)
+        self.assertIn('sendLine("DONE:SYS:STATUS");', FIRMWARE_SOURCE)
+
 
 if __name__ == "__main__":
     unittest.main()
