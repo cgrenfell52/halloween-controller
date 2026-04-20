@@ -20,6 +20,11 @@ This is a Raspberry Pi + Arduino-based Halloween prop controller.
 - Arduino connected at /dev/ttyACM0
 - Audio system working
 - Scene logic implemented and functional
+- Password-protected web UI/API supported
+- Serial reconnect and serial health reporting implemented
+- Dual-TV video playback implemented on the Pi
+- Ambient video is app-managed and always loops when idle
+- Triggered video plays after the end of TRICK/TREAT show flows
 
 ## Architecture
 Pi = controller (logic, UI, audio)
@@ -31,6 +36,11 @@ Commands:
 - SYS:<command>
 
 ## Known Issues / Notes
+- Do not reintroduce the old Weston or custom xinit experiments unless there is a specific reason.
+- Current working TV path is LightDM -> LXDE-pi-x -> X11 extended desktop -> mpv launched by app.py.
+- The Pi-side dual-screen layout helper is /home/candydisp/dual-tv-layout.sh.
+- The app owns ambient/triggered video transitions now. Do not run a separate ambient video service alongside halloween.service.
+- Video playback is intentionally disabled by default on non-Pi local development environments.
 
 
 ## Goals (Next Steps)
@@ -100,6 +110,9 @@ Behavior:
 - System ignores input if already running a scene
 - STOP command cancels active show immediately
 
+Current trigger debounce:
+- HALLOWEEN_GPIO_BOUNCE_TIME defaults to 0.1 seconds
+
 ## System State Rules
 
 - Only one scene can run at a time
@@ -110,6 +123,8 @@ Behavior:
   - Arduino outputs
 
 - Arduino must always return to a safe OFF state after STOP
+
+- Ambient TV video should resume after STOP, RESET, and ALL_OFF
 
 ## Audio System
 
@@ -122,6 +137,10 @@ Behavior:
 - Audio must:
   - not block scene execution
   - be stoppable via STOP command
+
+Stereo split:
+- Left channel = non-voice show audio / speaker feed
+- Right channel = voice / ServoDMX AutoTalk feed
 
 ## Environment
 
@@ -153,6 +172,18 @@ Pi trigger wiring:
 - Shared trigger ground can use physical pin 9 or 14
 - Internal pull-ups are enabled in software; do not wire triggers to 3.3V or 5V
 
+TV playback:
+- The Pi drives two 1920x1080 TVs as one 3840x1080 X11 desktop
+- Combined videos live in video/
+- ambient.mp4 loops when idle
+- triggered.mp4 plays once at the end of the show flow and then ambient resumes
+
+Current show/video timing:
+- TRICK: trick scene -> door sequence -> triggered video
+- TREAT: door sequence -> trick scene -> triggered video
+- Triggered video should not start early
+- Ambient should not compete with the triggered video
+
 Audio startup:
 - App requests 100 percent system mixer volume on startup
 - HALLOWEEN_SYSTEM_VOLUME overrides the requested percentage
@@ -162,6 +193,14 @@ Web access:
 - HALLOWEEN_ACCESS_PASSWORD enables password login for all UI/API routes
 - HALLOWEEN_SECRET_KEY signs remembered-browser sessions
 - HALLOWEEN_SESSION_DAYS controls remembered-browser lifetime
+
+Video-related env vars:
+- HALLOWEEN_VIDEO_DISABLED
+- HALLOWEEN_VIDEO_PLAYER
+- HALLOWEEN_VIDEO_DISPLAY
+- HALLOWEEN_VIDEO_XAUTHORITY
+- HALLOWEEN_VIDEO_AMBIENT_FILE
+- HALLOWEEN_VIDEO_TRIGGERED_FILE
 
 Stereo audio split:
 - Left channel = non-voice show audio / speaker feed
@@ -174,3 +213,5 @@ Stereo audio split:
 - Do not block the main thread in Flask
 - All serial communication must follow PROP_CTRL_V2 format
 - System must remain responsive to STOP at all times
+- Keep app.py and firmware.ino protocol expectations synchronized
+- If display/video behavior changes, update README.md and this handoff
