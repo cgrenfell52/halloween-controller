@@ -104,7 +104,7 @@ static const unsigned long DURATION_TRICK_CRACKLER  = 900;
 static const unsigned long DURATION_TRICK_AIR       = 300;
 static const unsigned long DURATION_TRICK_BOTH      = 2000;
 static const unsigned long DURATION_DOOR_HOLD_TOTAL = 22000;
-static const unsigned long DURATION_DOOR_TICKLE_PRE = 10000;
+static const unsigned long DURATION_DOOR_TICKLE_PRE = 9000;
 static const uint8_t DOOR_TICKLE_COUNT = 5;
 static const unsigned long DURATION_DOOR_TICKLE_ON_MIN  = 350;
 static const unsigned long DURATION_DOOR_TICKLE_ON_MAX  = 700;
@@ -376,7 +376,23 @@ bool runScene_DOOR_SEQUENCE() {
   doorElapsed += DURATION_DOOR_TICKLE_PRE;
 
   for (uint8_t i = 0; i < DOOR_TICKLE_COUNT; i++) {
-    unsigned long tickleOn = random(DURATION_DOOR_TICKLE_ON_MIN, DURATION_DOOR_TICKLE_ON_MAX + 1);
+    const uint8_t remainingAfterThis = DOOR_TICKLE_COUNT - i - 1;
+    const unsigned long minAfterCurrentOn =
+        remainingAfterThis == 0
+            ? 0
+            : DURATION_DOOR_TICKLE_GAP_MIN
+                  + (remainingAfterThis * DURATION_DOOR_TICKLE_ON_MIN)
+                  + ((remainingAfterThis - 1) * DURATION_DOOR_TICKLE_GAP_MIN);
+    const unsigned long remainingWindow =
+        DURATION_DOOR_HOLD_TOTAL > doorElapsed
+            ? DURATION_DOOR_HOLD_TOTAL - doorElapsed
+            : 0;
+    const unsigned long maxTickleOn =
+        remainingWindow > minAfterCurrentOn
+            ? min(DURATION_DOOR_TICKLE_ON_MAX, remainingWindow - minAfterCurrentOn)
+            : DURATION_DOOR_TICKLE_ON_MIN;
+    unsigned long tickleOn = random(DURATION_DOOR_TICKLE_ON_MIN, maxTickleOn + 1);
+
     setOutputRaw(OUT_AIR_TICKLER, true);
     sendStateByIndex(OUT_AIR_TICKLER);
     if (!waitWithPolling(tickleOn)) {
@@ -392,7 +408,20 @@ bool runScene_DOOR_SEQUENCE() {
     sendStateByIndex(OUT_AIR_TICKLER);
 
     if (i < DOOR_TICKLE_COUNT - 1) {
-      unsigned long tickleGap = random(DURATION_DOOR_TICKLE_GAP_MIN, DURATION_DOOR_TICKLE_GAP_MAX + 1);
+      const uint8_t futureTickles = DOOR_TICKLE_COUNT - i - 1;
+      const unsigned long minFuture =
+          (futureTickles * DURATION_DOOR_TICKLE_ON_MIN)
+              + ((futureTickles - 1) * DURATION_DOOR_TICKLE_GAP_MIN);
+      const unsigned long remainingAfterTickle =
+          DURATION_DOOR_HOLD_TOTAL > doorElapsed
+              ? DURATION_DOOR_HOLD_TOTAL - doorElapsed
+              : 0;
+      const unsigned long maxGap =
+          remainingAfterTickle > minFuture
+              ? min(DURATION_DOOR_TICKLE_GAP_MAX, remainingAfterTickle - minFuture)
+              : DURATION_DOOR_TICKLE_GAP_MIN;
+      unsigned long tickleGap = random(DURATION_DOOR_TICKLE_GAP_MIN, maxGap + 1);
+
       if (!waitWithPolling(tickleGap)) {
         setOutputRaw(OUT_DOOR, false);
         sendStateByIndex(OUT_DOOR);
