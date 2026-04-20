@@ -639,6 +639,8 @@ def apply_protocol_line(line: str):
         if line.startswith("DONE:"):
             clear_busy_marker()
             state["scene_active"] = False
+            state["system_status"] = "IDLE"
+            state["current_action"] = "NONE"
         return
 
 

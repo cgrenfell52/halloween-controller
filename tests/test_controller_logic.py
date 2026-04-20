@@ -117,6 +117,18 @@ class ControllerLogicTests(unittest.TestCase):
         self.assertFalse(controller.state["scene_active"])
         self.assertEqual(controller.state["busy_until_epoch"], 0)
 
+    def test_done_line_clears_running_status_even_without_idle_status(self):
+        controller.state["busy_until_epoch"] = 12345
+
+        controller.apply_protocol_line("STATUS:RUNNING_SCENE:DOOR_SEQUENCE")
+        controller.apply_protocol_line("DONE:DOOR_SEQUENCE")
+
+        self.assertEqual(controller.state["last_result"], "DONE:DOOR_SEQUENCE")
+        self.assertEqual(controller.state["system_status"], "IDLE")
+        self.assertEqual(controller.state["current_action"], "NONE")
+        self.assertFalse(controller.state["scene_active"])
+        self.assertEqual(controller.state["busy_until_epoch"], 0)
+
     def test_mock_ping_and_status_transactions_update_controller_state(self):
         self.assertTrue(controller.transact_system_command("SYS:PING"))
         self.assertEqual(controller.state["arduino_protocol_version"], "PROP_CTRL_V2")
