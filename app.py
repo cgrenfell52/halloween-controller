@@ -27,6 +27,7 @@ AUDIO_DRIVER = os.environ.get("HALLOWEEN_AUDIO_DRIVER", "").strip()
 AUDIO_DEVICE = os.environ.get("HALLOWEEN_AUDIO_DEVICE", "").strip()
 AUDIO_RUNTIME_DIR = os.environ.get("HALLOWEEN_AUDIO_RUNTIME_DIR", "").strip()
 AUDIO_PULSE_SERVER = os.environ.get("HALLOWEEN_PULSE_SERVER", "").strip()
+VIDEO_TRIGGERED_TIMEOUT_SECONDS = float(os.environ.get("HALLOWEEN_VIDEO_TRIGGERED_TIMEOUT", "35"))
 
 try:
     import pygame
@@ -526,6 +527,7 @@ gpio_buttons = []
 video_lock = threading.Lock()
 ambient_video_process = None
 triggered_video_process = None
+triggered_video_started_epoch = 0
 
 AUDIO_CHANNELS = make_audio_channels()
 
@@ -648,23 +650,26 @@ def ensure_ambient_video():
 
 
 def play_triggered_video_once():
-    global ambient_video_process, triggered_video_process
+    global ambient_video_process, triggered_video_process, triggered_video_started_epoch
 
     with video_lock:
         ambient_video_process = stop_video_process(ambient_video_process, "AMBIENT")
         triggered_video_process = stop_video_process(triggered_video_process, "TRIGGERED")
         triggered_video_process = launch_video_process(VIDEO_TRIGGERED_FILE, loop=False, label="TRIGGERED")
         if triggered_video_process is None:
+            triggered_video_started_epoch = 0
             ambient_video_process = launch_video_process(VIDEO_AMBIENT_FILE, loop=True, label="AMBIENT")
             return False
+        triggered_video_started_epoch = time.time()
         return True
 
 
 def resume_ambient_video():
-    global ambient_video_process, triggered_video_process
+    global ambient_video_process, triggered_video_process, triggered_video_started_epoch
 
     with video_lock:
         triggered_video_process = stop_video_process(triggered_video_process, "TRIGGERED")
+        triggered_video_started_epoch = 0
         if ambient_video_process is not None and ambient_video_process.poll() is None:
             set_video_state(
                 "AMBIENT",
@@ -679,7 +684,7 @@ def resume_ambient_video():
 
 
 def video_worker():
-    global ambient_video_process, triggered_video_process
+    global ambient_video_process, triggered_video_process, triggered_video_started_epoch
 
     while True:
         time.sleep(1)
@@ -688,7 +693,19 @@ def video_worker():
             if triggered_video_process is not None and triggered_video_process.poll() is not None:
                 exit_code = triggered_video_process.returncode
                 triggered_video_process = None
+                triggered_video_started_epoch = 0
                 log(f"VIDEO COMPLETE -> TRIGGERED (exit={exit_code})")
+                ambient_video_process = launch_video_process(VIDEO_AMBIENT_FILE, loop=True, label="AMBIENT")
+                continue
+
+            if (
+                triggered_video_process is not None
+                and triggered_video_started_epoch
+                and (time.time() - triggered_video_started_epoch) > VIDEO_TRIGGERED_TIMEOUT_SECONDS
+            ):
+                log("VIDEO WARNING -> Triggered video exceeded timeout. Returning to ambient.")
+                triggered_video_process = stop_video_process(triggered_video_process, "TRIGGERED")
+                triggered_video_started_epoch = 0
                 ambient_video_process = launch_video_process(VIDEO_AMBIENT_FILE, loop=True, label="AMBIENT")
                 continue
 
@@ -1359,6 +1376,10 @@ def play_scene_test_audio(scene_name: str):
     elif scene_name == "FOG_BURST":
         play_audio("WELCOME", channel_name="BACKGROUND")
 
+
+def stop_ambient_audio():
+    stop_audio_channel("BACKGROUND")
+
 def stop_audio_channel(channel_name: str):
     channel_name = channel_name.strip().upper()
 
@@ -1391,7 +1412,7 @@ def stop_all_audio():
             return False
         
 def run_show(mode: str, show_token: int):
-    if state["scene_active"] or state["system_status"] != "IDLE":
+    if state["active_show_token"] != show_token and (state["scene_active"] or state["system_status"] != "IDLE"):
         state["last_result"] = "ERROR:BUSY"
         log("Busy, ignoring show request.")
         return
@@ -1400,6 +1421,8 @@ def run_show(mode: str, show_token: int):
     play_triggered_video = False
 
     try:
+        stop_ambient_audio()
+
         if is_show_cancelled(show_token):
             state["last_result"] = "ERROR:SHOW_CANCELLED"
             log("Show cancelled before start.")
@@ -1491,6 +1514,8 @@ def start_show_request(mode: str, source: str):
         return None
 
     show_token = begin_new_show()
+    state["scene_active"] = True
+    stop_ambient_audio()
     log(f"{source} trigger accepted: {mode} (token={show_token})")
     threading.Thread(target=run_show, args=(mode, show_token), daemon=True).start()
     return show_token

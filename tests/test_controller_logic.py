@@ -212,6 +212,16 @@ class ControllerLogicTests(unittest.TestCase):
         self.assertEqual(calls, ["TRIGGERED"])
         self.assertEqual(controller.state["recent_scenes"][-1]["scene"], "DOOR_SEQUENCE")
 
+    def test_trick_show_stops_ambient_background_audio_before_scene_audio(self):
+        token = controller.begin_new_show()
+
+        controller.run_show("TRICK", token)
+
+        log = controller.state["log"]
+        ambient_stop_index = next(i for i, entry in enumerate(log) if "AUDIO STOP -> BACKGROUND" in entry)
+        trick_audio_index = next(i for i, entry in enumerate(log) if "AUDIO DISABLED -> skipped TRICK on MAIN" in entry)
+        self.assertLess(ambient_stop_index, trick_audio_index)
+
     def test_treat_show_runs_door_then_trick_without_trick_trigger_audio(self):
         token = controller.begin_new_show()
         controller.scene_bag = ["TRICK_HEAD_1"]
@@ -341,6 +351,29 @@ class ControllerLogicTests(unittest.TestCase):
 
         self.assertEqual(controller.state["active_show_token"], token)
         self.assertEqual(controller.state["last_result"], "ERROR:BUSY")
+
+    def test_start_show_request_latches_scene_active_before_worker_runs(self):
+        original_thread = controller.threading.Thread
+        calls = []
+
+        class FakeThread:
+            def __init__(self, target=None, args=None, daemon=None):
+                self.target = target
+                self.args = args
+                self.daemon = daemon
+
+            def start(self):
+                calls.append(("started", self.args))
+
+        controller.threading.Thread = FakeThread
+        try:
+            token = controller.start_show_request("TRICK", "GPIO")
+        finally:
+            controller.threading.Thread = original_thread
+
+        self.assertEqual(token, controller.state["active_show_token"])
+        self.assertTrue(controller.state["scene_active"])
+        self.assertEqual(calls, [("started", ("TRICK", token))])
 
     def test_busy_mock_arduino_rejects_overlapping_scene(self):
         controller.arduino.system_state = "RUNNING_SCENE"
