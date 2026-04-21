@@ -254,6 +254,89 @@ class ControllerLogicTests(unittest.TestCase):
         self.assertEqual(controller.state["recent_scenes"][-1]["scene"], "TRICK_HEAD_1")
         self.assertEqual(controller.state["recent_scenes"][-1]["mode"], "TREAT_TRICK")
 
+    def test_trick_show_schedules_closing_audio(self):
+        token = controller.begin_new_show()
+        calls = []
+        original = controller.schedule_closing_audio
+        controller.schedule_closing_audio = lambda show_token: calls.append(show_token) or True
+
+        try:
+            controller.run_show("TRICK", token)
+        finally:
+            controller.schedule_closing_audio = original
+
+        self.assertEqual(calls, [token])
+
+    def test_treat_show_schedules_closing_audio(self):
+        token = controller.begin_new_show()
+        controller.scene_bag = ["TRICK_HEAD_1"]
+        calls = []
+        original = controller.schedule_closing_audio
+        controller.schedule_closing_audio = lambda show_token: calls.append(show_token) or True
+
+        try:
+            controller.run_show("TREAT", token)
+        finally:
+            controller.schedule_closing_audio = original
+
+        self.assertEqual(calls, [token])
+
+    def test_wait_and_play_closing_audio_plays_when_show_audio_is_finished(self):
+        token = controller.begin_new_show()
+        calls = []
+        original_play_audio = controller.play_audio
+
+        class FakeBusyChannel:
+            def __init__(self, states):
+                self.states = list(states)
+
+            def get_busy(self):
+                if self.states:
+                    return self.states.pop(0)
+                return False
+
+        try:
+            controller.play_audio = lambda name, channel_name="MAIN", stop_same_channel=True: calls.append((name, channel_name)) or True
+            controller.AUDIO_CHANNELS["MAIN"] = FakeBusyChannel([True, False])
+            controller.AUDIO_CHANNELS["HEAD_1"] = FakeBusyChannel([False])
+            controller.AUDIO_CHANNELS["HEAD_2"] = FakeBusyChannel([False])
+            controller.AUDIO_CHANNELS["DOOR"] = FakeBusyChannel([False])
+            controller.state["scene_active"] = False
+            controller.state["system_status"] = "IDLE"
+
+            self.assertTrue(controller.wait_and_play_closing_audio(token))
+        finally:
+            controller.play_audio = original_play_audio
+            controller.AUDIO_CHANNELS = controller.make_audio_channels()
+
+        self.assertEqual(calls, [("CLOSING", "MAIN")])
+
+    def test_wait_and_play_closing_audio_skips_when_new_show_takes_over(self):
+        token = controller.begin_new_show()
+        calls = []
+        original_play_audio = controller.play_audio
+
+        class FakeBusyChannel:
+            def get_busy(self):
+                controller.begin_new_show()
+                return False
+
+        try:
+            controller.play_audio = lambda name, channel_name="MAIN", stop_same_channel=True: calls.append((name, channel_name)) or True
+            controller.AUDIO_CHANNELS["MAIN"] = FakeBusyChannel()
+            controller.AUDIO_CHANNELS["HEAD_1"] = controller.NullAudioChannel()
+            controller.AUDIO_CHANNELS["HEAD_2"] = controller.NullAudioChannel()
+            controller.AUDIO_CHANNELS["DOOR"] = controller.NullAudioChannel()
+            controller.state["scene_active"] = False
+            controller.state["system_status"] = "IDLE"
+
+            self.assertFalse(controller.wait_and_play_closing_audio(token))
+        finally:
+            controller.play_audio = original_play_audio
+            controller.AUDIO_CHANNELS = controller.make_audio_channels()
+
+        self.assertEqual(calls, [])
+
     def test_quiet_time_filters_loud_trick_scenes(self):
         old_settings = controller.settings.copy()
         old_current_minutes = controller.current_minutes

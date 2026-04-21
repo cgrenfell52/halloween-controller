@@ -166,6 +166,9 @@ class NullAudioChannel:
     def stop(self):
         return None
 
+    def get_busy(self):
+        return False
+
 
 AUDIO_MIXER_READY = init_audio_mixer()
 
@@ -206,6 +209,7 @@ app = Flask(__name__)
 
 TRACK_FILES = {
     "WELCOME": os.path.join(AUDIO_FOLDER, "welcome.mp3"),
+    "CLOSING": os.path.join(AUDIO_FOLDER, "closing.mp3"),
     "DOOR": os.path.join(AUDIO_FOLDER, "door.mp3"),
     "HAG": os.path.join(AUDIO_FOLDER, "hag.mp3"),
     "SKINNY": os.path.join(AUDIO_FOLDER, "skinny.mp3"),
@@ -845,6 +849,18 @@ def play_audio(name: str, channel_name: str = "MAIN", stop_same_channel: bool = 
             return False
 
 
+def is_audio_channel_busy(channel_name: str):
+    channel_name = channel_name.strip().upper()
+
+    if channel_name not in AUDIO_CHANNELS:
+        return False
+
+    try:
+        return bool(AUDIO_CHANNELS[channel_name].get_busy())
+    except Exception:
+        return False
+
+
 def set_busy_for_scene(scene_name: str):
     duration_ms = SCENES.get(scene_name, {}).get("duration_ms", 0)
     if duration_ms > 0:
@@ -1410,6 +1426,32 @@ def stop_all_audio():
         except Exception as e:
             log(f"AUDIO ERROR -> Failed to stop all audio: {e}")
             return False
+
+
+def wait_and_play_closing_audio(show_token: int):
+    watched_channels = ("MAIN", "HEAD_1", "HEAD_2", "DOOR")
+
+    while True:
+        if is_show_cancelled(show_token):
+            return False
+
+        if not any(is_audio_channel_busy(channel_name) for channel_name in watched_channels):
+            break
+
+        time.sleep(0.1)
+
+    if is_show_cancelled(show_token):
+        return False
+
+    if state["scene_active"] or state["system_status"] != "IDLE":
+        return False
+
+    return play_audio("CLOSING", channel_name="MAIN")
+
+
+def schedule_closing_audio(show_token: int):
+    threading.Thread(target=wait_and_play_closing_audio, args=(show_token,), daemon=True).start()
+    return True
         
 def run_show(mode: str, show_token: int):
     if state["active_show_token"] != show_token and (state["scene_active"] or state["system_status"] != "IDLE"):
@@ -1493,6 +1535,9 @@ def run_show(mode: str, show_token: int):
 
         if play_triggered_video and not is_show_cancelled(show_token):
             play_triggered_video_once()
+
+        if not is_show_cancelled(show_token):
+            schedule_closing_audio(show_token)
 
     finally:
         state["scene_active"] = False

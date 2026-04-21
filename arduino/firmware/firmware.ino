@@ -367,12 +367,16 @@ bool runScene_TRICK_BOTH_HEADS() {
 
 bool runScene_DOOR_SEQUENCE() {
   setOutputRaw(OUT_DOOR, true);
+  setOutputRaw(OUT_STROBE, true);
   sendStateByIndex(OUT_DOOR);
+  sendStateByIndex(OUT_STROBE);
   unsigned long doorElapsed = 0;
 
   if (!waitWithPolling(DURATION_DOOR_TICKLE_PRE)) {
     setOutputRaw(OUT_DOOR, false);
+    setOutputRaw(OUT_STROBE, false);
     sendStateByIndex(OUT_DOOR);
+    sendStateByIndex(OUT_STROBE);
     return false;
   }
   doorElapsed += DURATION_DOOR_TICKLE_PRE;
@@ -400,8 +404,10 @@ bool runScene_DOOR_SEQUENCE() {
     if (!waitWithPolling(tickleOn)) {
       setOutputRaw(OUT_AIR_TICKLER, false);
       setOutputRaw(OUT_DOOR, false);
+      setOutputRaw(OUT_STROBE, false);
       sendStateByIndex(OUT_AIR_TICKLER);
       sendStateByIndex(OUT_DOOR);
+      sendStateByIndex(OUT_STROBE);
       return false;
     }
     doorElapsed += tickleOn;
@@ -426,7 +432,9 @@ bool runScene_DOOR_SEQUENCE() {
 
       if (!waitWithPolling(tickleGap)) {
         setOutputRaw(OUT_DOOR, false);
+        setOutputRaw(OUT_STROBE, false);
         sendStateByIndex(OUT_DOOR);
+        sendStateByIndex(OUT_STROBE);
         return false;
       }
       doorElapsed += tickleGap;
@@ -440,12 +448,16 @@ bool runScene_DOOR_SEQUENCE() {
 
   if (finalHold > 0 && !waitWithPolling(finalHold)) {
     setOutputRaw(OUT_DOOR, false);
+    setOutputRaw(OUT_STROBE, false);
     sendStateByIndex(OUT_DOOR);
+    sendStateByIndex(OUT_STROBE);
     return false;
   }
 
   setOutputRaw(OUT_DOOR, false);
+  setOutputRaw(OUT_STROBE, false);
   sendStateByIndex(OUT_DOOR);
+  sendStateByIndex(OUT_STROBE);
   return true;
 }
 
