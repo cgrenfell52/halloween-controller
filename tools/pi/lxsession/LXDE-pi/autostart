@@ -1,0 +1,4 @@
+@/home/candydisp/dual-tv-layout.sh
+@xsetroot -solid black
+@xscreensaver -no-splash
+@unclutter-xfixes --timeout 0 --start-hidden
