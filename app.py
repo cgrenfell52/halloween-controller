@@ -1357,6 +1357,11 @@ def maybe_run_pending_fog_after_scene():
             reset_fog_timer()
 
 
+def reset_ambient_cycle_after_show():
+    state["pending_fog"] = False
+    reset_fog_timer()
+
+
 def run_scene(scene_name: str, mode: str, show_token=None):
     if scene_name not in SCENES:
         state["last_result"] = f"ERROR:UNKNOWN_SCENE:{scene_name}"
@@ -1542,7 +1547,7 @@ def run_show(mode: str, show_token: int):
     finally:
         state["scene_active"] = False
         clear_busy_marker()
-        maybe_run_pending_fog_after_scene()
+        reset_ambient_cycle_after_show()
 
 
 def start_show_request(mode: str, source: str):
@@ -1560,6 +1565,8 @@ def start_show_request(mode: str, source: str):
 
     show_token = begin_new_show()
     state["scene_active"] = True
+    state["pending_fog"] = False
+    reset_fog_timer()
     stop_ambient_audio()
     log(f"{source} trigger accepted: {mode} (token={show_token})")
     threading.Thread(target=run_show, args=(mode, show_token), daemon=True).start()

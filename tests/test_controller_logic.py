@@ -458,6 +458,46 @@ class ControllerLogicTests(unittest.TestCase):
         self.assertTrue(controller.state["scene_active"])
         self.assertEqual(calls, [("started", ("TRICK", token))])
 
+    def test_start_show_request_resets_ambient_timer_and_clears_pending_fog(self):
+        original_thread = controller.threading.Thread
+        original_reset_fog_timer = controller.reset_fog_timer
+        calls = []
+
+        class FakeThread:
+            def __init__(self, target=None, args=None, daemon=None):
+                self.target = target
+                self.args = args
+                self.daemon = daemon
+
+            def start(self):
+                calls.append(("started", self.args))
+
+        try:
+            controller.threading.Thread = FakeThread
+            controller.reset_fog_timer = lambda: calls.append("reset_fog_timer")
+            controller.state["pending_fog"] = True
+
+            controller.start_show_request("TRICK", "GPIO")
+        finally:
+            controller.threading.Thread = original_thread
+            controller.reset_fog_timer = original_reset_fog_timer
+
+        self.assertFalse(controller.state["pending_fog"])
+        self.assertIn("reset_fog_timer", calls)
+
+    def test_run_show_resets_ambient_cycle_after_show(self):
+        token = controller.begin_new_show()
+        original_reset_ambient_cycle_after_show = controller.reset_ambient_cycle_after_show
+        calls = []
+
+        try:
+            controller.reset_ambient_cycle_after_show = lambda: calls.append("reset")
+            controller.run_show("TRICK", token)
+        finally:
+            controller.reset_ambient_cycle_after_show = original_reset_ambient_cycle_after_show
+
+        self.assertEqual(calls, ["reset"])
+
     def test_busy_mock_arduino_rejects_overlapping_scene(self):
         controller.arduino.system_state = "RUNNING_SCENE"
 
