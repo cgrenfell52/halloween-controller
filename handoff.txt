@@ -25,6 +25,10 @@ This is a Raspberry Pi + Arduino-based Halloween prop controller.
 - Dual-TV video playback implemented on the Pi
 - Ambient video is app-managed and always loops when idle
 - Triggered video plays after the end of TRICK/TREAT show flows
+- closing.mp3 plays after completed show audio unless a newer show interrupts it
+- Ambient idle timing is reset after each show so welcome/fog audio does not collide with show audio
+- Door and strobe are driven together during the Arduino door sequence
+- Pi display fallback is a minimal black X11 desktop with hidden cursor
 
 ## Architecture
 Pi = controller (logic, UI, audio)
@@ -41,6 +45,7 @@ Commands:
 - The Pi-side dual-screen layout helper is /home/candydisp/dual-tv-layout.sh.
 - The app owns ambient/triggered video transitions now. Do not run a separate ambient video service alongside halloween.service.
 - Video playback is intentionally disabled by default on non-Pi local development environments.
+- The current triggered video path may still fall back by timeout in some cases rather than always exiting naturally.
 
 
 ## Goals (Next Steps)
@@ -177,12 +182,16 @@ TV playback:
 - Combined videos live in video/
 - ambient.mp4 loops when idle
 - triggered.mp4 plays once at the end of the show flow and then ambient resumes
+- tools/pi/lxsession/LXDE-pi/autostart is the repo-managed LXDE session config for the black fallback desktop
+- tools/pi/apply_display_session.sh reapplies that session config on the Pi
 
 Current show/video timing:
 - TRICK: trick scene -> door sequence -> triggered video
 - TREAT: door sequence -> trick scene -> triggered video
 - Triggered video should not start early
 - Ambient should not compete with the triggered video
+- closing.mp3 should play after completed show audio, but must always lose to a new TRICK/TREAT request
+- ambient timing should restart fresh after every completed show
 
 Audio startup:
 - App requests 100 percent system mixer volume on startup
@@ -215,3 +224,7 @@ Stereo audio split:
 - System must remain responsive to STOP at all times
 - Keep app.py and firmware.ino protocol expectations synchronized
 - If display/video behavior changes, update README.md and this handoff
+
+## Version Baseline
+
+Treat the current repository state as the `v1.0` baseline.

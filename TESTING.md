@@ -45,3 +45,24 @@ powershell -ExecutionPolicy Bypass -File .\scripts\compile_arduino.ps1 -Fqbn "ar
 
 The compile script uses repo-local Arduino CLI data/download/build folders, all
 ignored by git.
+
+## Pi Display Session
+
+The live dual-TV Pi setup now uses a repo-managed LXDE session override for a
+black fallback desktop with no wallpaper or panel chrome.
+
+Relevant files:
+
+```text
+tools/pi/lxsession/LXDE-pi/autostart
+tools/pi/apply_display_session.sh
+```
+
+To re-apply that session config on the Pi:
+
+```bash
+bash tools/pi/apply_display_session.sh
+```
+
+After applying it, the idle fallback desktop should be plain black and the
+cursor should remain hidden.

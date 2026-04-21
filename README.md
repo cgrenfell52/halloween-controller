@@ -2,6 +2,8 @@
 
 A network-connected Halloween attraction controller built on a Raspberry Pi 5 and an Arduino Mega. The system coordinates physical props, stereo audio, dual-screen video, GPIO trigger inputs, and a remote web control surface into one show-ready experience.
 
+Current repository baseline: `v1.0`
+
 This repository contains the full control stack for a TRICK/TREAT installation where:
 
 - the Raspberry Pi acts as the show director
@@ -62,6 +64,9 @@ flowchart LR
 - serial health visibility through the API/UI
 - automatic ambient TV playback during idle periods
 - triggered TV playback at the end of completed show flows
+- automatic end-cap `closing.mp3` playback after completed show audio, interruptible by the next trigger
+- ambient timer reset after every completed show to prevent idle fog audio from colliding with show audio
+- synchronized door + strobe behavior in the Arduino door sequence
 - password-protected public-facing control endpoint
 
 ## Show Experience
@@ -107,7 +112,8 @@ Internal pull-ups are enabled in software. Do not apply external voltage to thes
 4. Play door audio.
 5. Run the door sequence on the Arduino.
 6. After the door sequence completes, play the triggered TV video.
-7. Return to looping ambient TV video.
+7. After show audio finishes, play `closing.mp3` unless a newer show takes over.
+8. Return to looping ambient TV video.
 
 ### TREAT
 
@@ -117,7 +123,8 @@ Internal pull-ups are enabled in software. Do not apply external voltage to thes
 4. Play only the matching head voice audio for that trick scene.
 5. Run the trick scene on the Arduino.
 6. After that final trick completes, play the triggered TV video.
-7. Return to looping ambient TV video.
+7. After show audio finishes, play `closing.mp3` unless a newer show takes over.
+8. Return to looping ambient TV video.
 
 `STOP`, `RESET`, and `ALL_OFF` cancel the active show, stop audio, force outputs off, and restore ambient TV playback.
 
@@ -132,6 +139,7 @@ The controller currently includes:
 - safe output reset behavior through `STOP`, `RESET`, and `ALL_OFF`
 - GPIO trigger debounce control
 - app-managed ambient video recovery
+- repo-managed Pi display session configuration for a clean black fallback desktop
 - long-lived password-authenticated browser sessions
 
 ## Quiet Time
@@ -160,6 +168,15 @@ Do not mono-sum the channels together. That would send non-voice effects into Au
 
 On startup, the app requests `100%` system output volume by default so final loudness can be adjusted downstream on the speakers/amp.
 
+Current active audio tracks:
+
+- `welcome.mp3` for idle fog/ambient moments
+- `door.mp3` during the door sequence
+- `trick.mp3` for TRICK trigger audio
+- `treat.mp3` for TREAT trigger audio
+- `skinny.mp3` and `hag.mp3` for the matching head voices
+- `closing.mp3` after a completed show, interruptible by the next show
+
 ## TV Video System
 
 The Pi 5 drives two identical `1920x1080` TVs from its dual HDMI outputs.
@@ -182,6 +199,12 @@ Current deployed display approach:
 - LightDM autologin into `LXDE-pi-x`
 - X11 desktop extended across both displays
 - `/home/candydisp/dual-tv-layout.sh` applies the `3840x1080` layout on login
+- LXDE session stripped down to a black fallback desktop with no wallpaper panel or desktop-manager chrome
+
+Repo-managed Pi display session files:
+
+- `tools/pi/lxsession/LXDE-pi/autostart`
+- `tools/pi/apply_display_session.sh`
 
 ## Serial Protocol
 
@@ -249,6 +272,21 @@ Typical service behavior:
 - connects to the Arduino
 - enables GPIO triggers
 - starts ambient video playback
+
+### Display Session
+
+To re-apply the minimal dual-TV desktop session on the Pi:
+
+```bash
+bash tools/pi/apply_display_session.sh
+```
+
+This installs the repo-managed LXDE autostart file that:
+
+- applies the dual-TV layout
+- sets a black root background
+- keeps the cursor hidden
+- avoids desktop panels and wallpaper showing during video transitions
 
 ## Deployment Notes
 
@@ -337,3 +375,5 @@ This repository reflects the current working architecture of the live system, in
 - password-protected remote access
 - stereo split audio routing
 - dual-TV ambient and triggered video playback
+- closing-audio show tail behavior
+- repo-tracked Pi display session configuration
