@@ -8,6 +8,9 @@ FAILURE_FILE="${HALLOWEEN_NET_FAILURE_FILE:-/run/halloween-network-watchdog.fail
 APP_SERVICE="${HALLOWEEN_APP_SERVICE:-halloween.service}"
 APP_HEALTH_URL="${HALLOWEEN_APP_HEALTH_URL:-http://127.0.0.1:5000/healthz}"
 RESTART_APP_ON_HEALTH_FAILURE="${HALLOWEEN_RESTART_APP_ON_HEALTH_FAILURE:-0}"
+TAILSCALE_RECOVERY_ENABLED="${HALLOWEEN_TAILSCALE_RECOVERY_ENABLED:-1}"
+TAILSCALE_FAILURE_THRESHOLD="${HALLOWEEN_TAILSCALE_FAILURE_THRESHOLD:-3}"
+TAILSCALE_FAILURE_FILE="${HALLOWEEN_TAILSCALE_FAILURE_FILE:-/run/halloween-tailscale-watchdog.failures}"
 
 log() {
   printf 'halloween-network-watchdog: %s\n' "$*"
@@ -33,6 +36,84 @@ record_network_failure() {
   failures=$((failures + 1))
   printf '%s\n' "$failures" > "$FAILURE_FILE"
   printf '%s\n' "$failures"
+}
+
+record_tailscale_success() {
+  rm -f "$TAILSCALE_FAILURE_FILE"
+}
+
+record_tailscale_failure() {
+  local failures=0
+  if [ -f "$TAILSCALE_FAILURE_FILE" ]; then
+    failures="$(cat "$TAILSCALE_FAILURE_FILE" 2>/dev/null || printf '0')"
+  fi
+  failures=$((failures + 1))
+  printf '%s\n' "$failures" > "$TAILSCALE_FAILURE_FILE"
+  printf '%s\n' "$failures"
+}
+
+disable_wifi_power_save() {
+  if ! command -v iw >/dev/null 2>&1; then
+    log "iw not installed; cannot verify WiFi power save"
+    return
+  fi
+
+  local before=""
+  before="$(iw dev "$IFACE" get power_save 2>/dev/null || true)"
+  iw dev "$IFACE" set power_save off >/dev/null 2>&1 || true
+  local after=""
+  after="$(iw dev "$IFACE" get power_save 2>/dev/null || true)"
+
+  if [ "$after" = "Power save: off" ]; then
+    if [ "$before" != "$after" ]; then
+      log "disabled WiFi power save on ${IFACE}"
+    fi
+    return
+  fi
+
+  log "could not disable WiFi power save on ${IFACE}: ${after:-unknown status}"
+}
+
+check_tailscale_health() {
+  if [ "$TAILSCALE_RECOVERY_ENABLED" != "1" ] || ! command -v tailscale >/dev/null 2>&1; then
+    return 0
+  fi
+
+  tailscale status --json 2>/dev/null | python3 -c 'import json, sys
+try:
+    status = json.load(sys.stdin)
+except Exception:
+    raise SystemExit(1)
+
+health = status.get("Health") or []
+backend = status.get("BackendState")
+if backend == "Running" and not health:
+    raise SystemExit(0)
+print("; ".join(str(item) for item in health) or f"BackendState={backend}")
+raise SystemExit(1)
+'
+}
+
+recover_tailscale_if_needed() {
+  if [ "$TAILSCALE_RECOVERY_ENABLED" != "1" ] || ! command -v tailscale >/dev/null 2>&1; then
+    return
+  fi
+
+  local health_output=""
+  if health_output="$(check_tailscale_health 2>&1)"; then
+    record_tailscale_success
+    return
+  fi
+
+  local failures=""
+  failures="$(record_tailscale_failure)"
+  log "tailscale health check failed; consecutive failures=${failures}; ${health_output:-no status}"
+
+  if [ "$failures" -ge "$TAILSCALE_FAILURE_THRESHOLD" ]; then
+    log "restarting tailscaled after ${TAILSCALE_FAILURE_THRESHOLD} consecutive health failures"
+    systemctl restart tailscaled.service || true
+    record_tailscale_success
+  fi
 }
 
 check_app() {
@@ -98,11 +179,10 @@ recover_network() {
   ip link set "$IFACE" up || true
 }
 
-if command -v iw >/dev/null 2>&1; then
-  iw dev "$IFACE" set power_save off >/dev/null 2>&1 || true
-fi
+disable_wifi_power_save
 
 recover_app_if_needed
+recover_tailscale_if_needed
 
 gateway="$(route_gateway || true)"
 if [ -n "$gateway" ] && ping_target "$gateway"; then

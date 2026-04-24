@@ -291,10 +291,11 @@ The Pi bootstrap also installs:
 
 The timer runs once per minute. It leaves `halloween.service` running by
 default so the active show/screens are not interrupted, disables WiFi power save
-when supported, and restarts the Pi network stack after repeated failed
-gateway/internet pings. Local app health failures are logged through systemd
-journals; set `HALLOWEEN_RESTART_APP_ON_HEALTH_FAILURE=1` only if you want the
-watchdog to restart the show app too.
+when supported, restarts `tailscaled` after repeated Tailscale health failures,
+and restarts the Pi network stack after repeated failed gateway/internet pings.
+Local app health failures are logged through systemd journals; set
+`HALLOWEEN_RESTART_APP_ON_HEALTH_FAILURE=1` only if you want the watchdog to
+restart the show app too.
 
 Useful commands on the Pi:
 

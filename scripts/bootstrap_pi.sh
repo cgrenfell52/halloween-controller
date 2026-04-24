@@ -107,6 +107,7 @@ Type=oneshot
 Environment=HALLOWEEN_NET_IFACE=wlan0
 Environment=HALLOWEEN_APP_SERVICE=halloween.service
 Environment=HALLOWEEN_RESTART_APP_ON_HEALTH_FAILURE=0
+Environment=HALLOWEEN_TAILSCALE_RECOVERY_ENABLED=1
 ExecStart=/usr/local/bin/halloween-network-watchdog.sh
 WATCHDOG_SERVICE
 

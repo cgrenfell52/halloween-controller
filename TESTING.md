@@ -77,8 +77,8 @@ tools/pi/halloween-network-watchdog.sh
 
 The script checks local Flask health at `/healthz`, verifies gateway/internet
 reachability, leaves `halloween.service` running by default, disables WiFi power
-save when supported, and restarts networking after repeated failed network
-checks.
+save when supported, restarts `tailscaled` after repeated Tailscale health
+failures, and restarts networking after repeated failed network checks.
 
 On the Pi, inspect it with:
 
