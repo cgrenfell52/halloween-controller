@@ -75,6 +75,24 @@ class FlaskRouteTests(unittest.TestCase):
         self.assertIn("Scene Tests", body)
         self.assertIn('data-command="SYS:PING"', body)
 
+    def test_healthz_returns_lightweight_liveness(self):
+        response = self.client.get("/healthz")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertTrue(payload["ok"])
+        self.assertIn("uptime_seconds", payload)
+
+    def test_readyz_returns_limited_readiness(self):
+        response = self.client.get("/readyz")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["system_status"], "IDLE")
+        self.assertTrue(payload["arduino_connected"])
+        self.assertIn("uptime_seconds", payload)
+
     def test_run_main_rejects_invalid_mode(self):
         response = self.client.post("/api/run_main", json={"mode": "BOO"})
 
@@ -180,6 +198,12 @@ class FlaskRouteTests(unittest.TestCase):
             api_response = self.client.get("/api/status")
             self.assertEqual(api_response.status_code, 401)
             self.assertEqual(api_response.get_json()["error"], "AUTH_REQUIRED")
+
+            health_response = self.client.get("/healthz")
+            self.assertEqual(health_response.status_code, 200)
+
+            ready_response = self.client.get("/readyz")
+            self.assertEqual(ready_response.status_code, 200)
         finally:
             controller.ACCESS_PASSWORD = old_password
 

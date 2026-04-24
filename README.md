@@ -273,6 +273,46 @@ Typical service behavior:
 - enables GPIO triggers
 - starts ambient video playback
 
+### Connectivity Recovery
+
+The app exposes unauthenticated health endpoints for local watchdogs and remote
+uptime checks:
+
+- `GET /healthz`: lightweight Flask liveness check
+- `GET /readyz`: limited controller readiness snapshot
+
+The Pi bootstrap also installs:
+
+```text
+/etc/systemd/system/halloween-network-watchdog.service
+/etc/systemd/system/halloween-network-watchdog.timer
+/usr/local/bin/halloween-network-watchdog.sh
+```
+
+The timer runs once per minute. It leaves `halloween.service` running by
+default so the active show/screens are not interrupted, disables WiFi power save
+when supported, and restarts the Pi network stack after repeated failed
+gateway/internet pings. Local app health failures are logged through systemd
+journals; set `HALLOWEEN_RESTART_APP_ON_HEALTH_FAILURE=1` only if you want the
+watchdog to restart the show app too.
+
+Useful commands on the Pi:
+
+```bash
+systemctl status halloween-network-watchdog.timer
+journalctl -u halloween-network-watchdog.service -n 80 --no-pager
+curl -fsS http://127.0.0.1:5000/healthz
+```
+
+If the Pi uses a network interface other than `wlan0`, edit
+`HALLOWEEN_NET_IFACE` in `/etc/systemd/system/halloween-network-watchdog.service`
+and run:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart halloween-network-watchdog.timer
+```
+
 ### Display Session
 
 To re-apply the minimal dual-TV desktop session on the Pi:

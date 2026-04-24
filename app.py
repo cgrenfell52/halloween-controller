@@ -256,6 +256,7 @@ app.secret_key = SESSION_SECRET
 app.permanent_session_lifetime = timedelta(days=SESSION_DAYS)
 
 PROTOCOL_VERSION = "PROP_CTRL_V2"
+APP_STARTED_EPOCH = time.time()
 
 # -----------------------------
 # OUTPUTS / HARDWARE NAMES
@@ -1673,7 +1674,7 @@ def require_authentication():
     if not auth_enabled() or is_authenticated():
         return None
 
-    if request.endpoint in {"login", "static"}:
+    if request.endpoint in {"login", "static", "healthz", "readyz"}:
         return None
 
     if request.path.startswith("/api/"):
@@ -1721,6 +1722,30 @@ def service():
         service_buttons=SERVICE_BUTTONS,
         scene_test_buttons=SCENE_TEST_BUTTONS,
     )
+
+
+@app.route("/healthz")
+def healthz():
+    return jsonify({"ok": True, "uptime_seconds": round(time.time() - APP_STARTED_EPOCH, 1)})
+
+
+@app.route("/readyz")
+def readyz():
+    refresh_quiet_mode_state()
+    return jsonify(
+        {
+            "ok": True,
+            "system_status": state["system_status"],
+            "current_action": state["current_action"],
+            "arduino_connected": state["arduino_connected"],
+            "arduino_mode": state["arduino_mode"],
+            "serial_last_error": state["serial_last_error"],
+            "video_mode": state.get("video_mode"),
+            "quiet_mode_active": state["quiet_mode_active"],
+            "uptime_seconds": round(time.time() - APP_STARTED_EPOCH, 1),
+        }
+    )
+
 
 @app.route("/api/status")
 def api_status():

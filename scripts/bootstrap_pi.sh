@@ -21,7 +21,7 @@ chmod 600 "$HOME/.ssh/authorized_keys"
 
 echo "== Installing system packages =="
 sudo apt update
-sudo apt install -y git curl python3-venv python3-pip python3-gpiozero python3-lgpio
+sudo apt install -y git curl iw iproute2 iputils-ping python3-venv python3-pip python3-gpiozero python3-lgpio
 
 echo "== Fetching project repo =="
 if [ -d "$REPO_DIR/.git" ]; then
@@ -94,7 +94,41 @@ sudo systemctl daemon-reload
 sudo systemctl enable halloween.service
 sudo systemctl restart halloween.service
 
+echo "== Installing network watchdog =="
+sudo install -m 755 tools/pi/halloween-network-watchdog.sh /usr/local/bin/halloween-network-watchdog.sh
+sudo tee /etc/systemd/system/halloween-network-watchdog.service >/dev/null <<WATCHDOG_SERVICE
+[Unit]
+Description=Halloween network and web app watchdog
+After=network-online.target halloween.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+Environment=HALLOWEEN_NET_IFACE=wlan0
+Environment=HALLOWEEN_APP_SERVICE=halloween.service
+Environment=HALLOWEEN_RESTART_APP_ON_HEALTH_FAILURE=0
+ExecStart=/usr/local/bin/halloween-network-watchdog.sh
+WATCHDOG_SERVICE
+
+sudo tee /etc/systemd/system/halloween-network-watchdog.timer >/dev/null <<WATCHDOG_TIMER
+[Unit]
+Description=Run Halloween network and web app watchdog every minute
+
+[Timer]
+OnBootSec=90
+OnUnitActiveSec=60
+AccuracySec=10
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+WATCHDOG_TIMER
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now halloween-network-watchdog.timer
+
 echo "== Service status =="
 sudo systemctl status halloween.service --no-pager
+sudo systemctl status halloween-network-watchdog.timer --no-pager
 
 echo "== Done =="

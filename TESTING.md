@@ -66,3 +66,23 @@ bash tools/pi/apply_display_session.sh
 
 After applying it, the idle fallback desktop should be plain black and the
 cursor should remain hidden.
+
+## Pi Connectivity Watchdog
+
+The Pi bootstrap installs a systemd timer that runs:
+
+```text
+tools/pi/halloween-network-watchdog.sh
+```
+
+The script checks local Flask health at `/healthz`, verifies gateway/internet
+reachability, leaves `halloween.service` running by default, disables WiFi power
+save when supported, and restarts networking after repeated failed network
+checks.
+
+On the Pi, inspect it with:
+
+```bash
+systemctl status halloween-network-watchdog.timer
+journalctl -u halloween-network-watchdog.service -n 80 --no-pager
+```
