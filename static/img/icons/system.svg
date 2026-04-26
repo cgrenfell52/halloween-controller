@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="System">
+  <defs>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="2.2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect x="13" y="11" width="38" height="13" rx="4" fill="#121821" stroke="#57a8ff" stroke-width="3"/>
+  <rect x="13" y="27" width="38" height="13" rx="4" fill="#121821" stroke="#8b43ff" stroke-width="3"/>
+  <rect x="13" y="43" width="38" height="10" rx="4" fill="#121821" stroke="#75e35e" stroke-width="3"/>
+  <circle cx="22" cy="18" r="2.5" fill="#75e35e" filter="url(#glow)"/>
+  <circle cx="22" cy="34" r="2.5" fill="#ff891f"/>
+  <circle cx="22" cy="48" r="2.5" fill="#75e35e"/>
+</svg>

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Audio | HauntOS{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <span class="eyebrow">Media Library</span>
+    <h1>Audio</h1>
+    <p class="muted">Upload and manage MP3/WAV files for sound tiles.</p>
+  </div>
+  <div class="header-actions">
+    <button class="ghost-button subtle-button" type="button" data-action="refresh">Refresh</button>
+  </div>
+</section>
+
+<div class="media-manager">
+  <section class="panel upload-card">
+    <div class="panel-title">
+      <h2>Upload Audio</h2>
+      <span>.mp3 or .wav</span>
+    </div>
+    <form id="audio-upload-form" data-media-upload="audio">
+      <label class="file-picker">
+        <span>Select audio file</span>
+        <input type="file" name="file" accept=".mp3,.wav,audio/mpeg,audio/wav">
+      </label>
+      <button class="primary-purple" type="submit">Upload Audio</button>
+    </form>
+  </section>
+
+  <section class="panel">
+    <div class="panel-title">
+      <h2>Audio Files</h2>
+      <span id="audio-library-count">0</span>
+    </div>
+    <div id="audio-library-list" class="library-list"></div>
+  </section>
+</div>
+{% endblock %}

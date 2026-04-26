@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Setup | HauntOS{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <span class="eyebrow">First Run</span>
+    <h1>Setup Wizard</h1>
+    <p class="muted">Name the controller, label devices, and test an output.</p>
+  </div>
+  <div class="header-actions">
+    <button class="ghost-button subtle-button" type="button" data-action="refresh">Refresh</button>
+  </div>
+</section>
+
+<form id="setup-form" class="setup-grid">
+  <section class="panel setup-step">
+    <span class="step-number">1</span>
+    <div class="panel-title">
+      <h2>Name Controller</h2>
+      <span>Shown in status panels</span>
+    </div>
+    <label class="field">
+      <span>Controller Name</span>
+      <input id="setup-controller-name" name="controller_name" type="text" value="HauntOS Controller" required>
+    </label>
+  </section>
+
+  <section class="panel setup-step">
+    <span class="step-number">2</span>
+    <div class="panel-title">
+      <h2>Name Outputs</h2>
+      <span>8 output names</span>
+    </div>
+    <div id="setup-outputs" class="field-grid setup-fields"></div>
+  </section>
+
+  <section class="panel setup-step">
+    <span class="step-number">3</span>
+    <div class="panel-title">
+      <h2>Name Inputs</h2>
+      <span>4 input names</span>
+    </div>
+    <div id="setup-inputs" class="field-grid setup-fields"></div>
+  </section>
+
+  <section class="panel setup-actions-panel">
+    <div class="panel-title">
+      <h2>Test And Save</h2>
+      <span>Finish setup</span>
+    </div>
+    <label class="field setup-test-field">
+      <span>Output To Test</span>
+      <select id="setup-test-output-select"></select>
+    </label>
+    <div class="header-actions">
+      <button class="secondary-button" type="button" id="setup-test-output">Test Output</button>
+      <button class="primary-purple" type="submit">Save Setup</button>
+    </div>
+  </section>
+</form>
+{% endblock %}

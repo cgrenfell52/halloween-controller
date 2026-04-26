@@ -1,0 +1,1 @@
+"""HauntOS application package."""

@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}System | HauntOS{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <span class="eyebrow">Product Polish</span>
+    <h1>System</h1>
+    <p class="muted">Backup, restore, service controls, and diagnostics.</p>
+  </div>
+  <div class="header-actions">
+    <button class="ghost-button subtle-button" type="button" data-action="refresh">Refresh</button>
+  </div>
+</section>
+
+<section class="system-grid">
+  <article class="panel">
+    <div class="panel-title">
+      <h2>System Info</h2>
+      <span id="system-info-summary">Loading</span>
+    </div>
+    <dl id="system-info-list" class="system-list expanded"></dl>
+  </article>
+
+  <article class="panel">
+    <div class="panel-title">
+      <h2>Connection</h2>
+      <span id="connection-summary">Loading</span>
+    </div>
+    <dl id="connection-list" class="system-list expanded"></dl>
+    <p id="connection-note" class="tip">Run HauntOS on the Raspberry Pi to control GPIO hardware. Local/mock mode is for setup and testing.</p>
+  </article>
+
+  <article class="panel">
+    <div class="panel-title">
+      <h2>Config Backup</h2>
+      <span>Export / import / reset</span>
+    </div>
+    <div class="stack">
+      <a class="download-button" href="/api/config/export">Download Config Backup</a>
+      <form id="config-import-form" class="inline-form">
+        <label class="file-picker">
+          <span>Import backup JSON</span>
+          <input type="file" name="file" accept=".json,application/json">
+        </label>
+        <button class="secondary-button" type="submit">Import Config</button>
+      </form>
+      <button class="outline-danger" type="button" data-system-action="factory-reset">Factory Reset</button>
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="panel-title">
+      <h2>System Controls</h2>
+      <span>Guarded actions</span>
+    </div>
+    <div class="control-grid">
+      <button class="secondary-button" type="button" data-system-action="restart_service">Restart HauntOS Service</button>
+      <button class="outline-danger" type="button" data-system-action="reboot">Reboot Pi</button>
+      <button class="danger-button" type="button" data-system-action="shutdown">Shutdown Pi</button>
+    </div>
+    <p class="tip">These actions require confirmation and only run on Linux/Raspberry Pi deployments.</p>
+  </article>
+
+  <article class="panel log-panel">
+    <div class="panel-title">
+      <h2>Recent Errors</h2>
+      <span id="log-count">0</span>
+    </div>
+    <pre id="log-list" class="log-list">Loading logs...</pre>
+  </article>
+</section>
+{% endblock %}

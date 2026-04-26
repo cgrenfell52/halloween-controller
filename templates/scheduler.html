@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Scheduler | HauntOS{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <span class="eyebrow">Automation</span>
+    <h1>Scheduler</h1>
+    <p class="muted">Run one routine automatically during active show hours.</p>
+  </div>
+  <div class="header-actions">
+    <button class="ghost-button subtle-button" type="button" data-action="refresh">Refresh</button>
+  </div>
+</section>
+
+<section class="scheduler-layout">
+  <form id="scheduler-form" class="panel scheduler-form">
+    <div class="panel-title">
+      <h2>Schedule Settings</h2>
+      <span id="scheduler-enabled-label">Disabled</span>
+    </div>
+
+    <label class="toggle-row">
+      <input id="scheduler-enabled" type="checkbox">
+      <span>
+        <strong>Enable Scheduler</strong>
+        <small>Only runs when the system is armed.</small>
+      </span>
+    </label>
+
+    <div class="field-grid scheduler-fields">
+      <label class="field">
+        <span>Start Time</span>
+        <input id="scheduler-start-time" type="time" value="19:00">
+      </label>
+      <label class="field">
+        <span>End Time</span>
+        <input id="scheduler-end-time" type="time" value="22:00">
+      </label>
+      <label class="field">
+        <span>Interval Mode</span>
+        <select id="scheduler-mode">
+          <option value="fixed">Fixed Interval</option>
+          <option value="random">Random Interval</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Routine</span>
+        <select id="scheduler-routine"></select>
+      </label>
+      <label class="field">
+        <span>Interval Min Seconds</span>
+        <input id="scheduler-interval-min" type="number" min="1" step="1" value="120">
+      </label>
+      <label class="field">
+        <span>Interval Max Seconds</span>
+        <input id="scheduler-interval-max" type="number" min="1" step="1" value="300">
+      </label>
+    </div>
+
+    <div class="header-actions">
+      <button class="primary-purple" type="submit">Save Scheduler</button>
+    </div>
+  </form>
+
+  <aside class="panel scheduler-status-panel">
+    <div class="panel-title">
+      <h2>Status</h2>
+      <span id="scheduler-thread-status">Loading</span>
+    </div>
+    <dl id="scheduler-status-list" class="system-list expanded"></dl>
+    <p class="tip">Random routine chooses one of IN1-IN4. Fixed interval uses the minimum interval value.</p>
+  </aside>
+</section>
+{% endblock %}

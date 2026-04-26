@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}HauntOS{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script defer src="{{ url_for('static', filename='js/main.js') }}"></script>
+  </head>
+  <body data-page="{{ active_page }}">
+    <button class="global-stop-button" type="button" data-action="stop">STOP EVERYTHING</button>
+
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="HauntOS navigation">
+        <a class="brand" href="/" aria-label="HauntOS dashboard">
+          <img class="brand-logo" src="{{ url_for('static', filename='img/hauntpi-logo.png') }}" alt="HauntPI Haunt Controller">
+        </a>
+
+        <nav class="nav" aria-label="Primary">
+          <a href="/" {% if active_page == "dashboard" %}aria-current="page"{% endif %}><img class="nav-icon" src="{{ url_for('static', filename='img/icons/dashboard.svg') }}" alt="" aria-hidden="true">Dashboard</a>
+          <a href="/inputs" {% if active_page == "inputs" %}aria-current="page"{% endif %}><img class="nav-icon" src="{{ url_for('static', filename='img/icons/inputs.svg') }}" alt="" aria-hidden="true">Inputs / Routines</a>
+          <a href="/outputs" {% if active_page == "outputs" %}aria-current="page"{% endif %}><img class="nav-icon" src="{{ url_for('static', filename='img/icons/outputs.svg') }}" alt="" aria-hidden="true">Outputs</a>
+          <a href="/audio" {% if active_page == "audio" %}aria-current="page"{% endif %}><img class="nav-icon" src="{{ url_for('static', filename='img/icons/audio.svg') }}" alt="" aria-hidden="true">Audio</a>
+          <a href="/video" {% if active_page == "video" %}aria-current="page"{% endif %}><img class="nav-icon" src="{{ url_for('static', filename='img/icons/video.svg') }}" alt="" aria-hidden="true">Video</a>
+          <a href="/scheduler" {% if active_page == "scheduler" %}aria-current="page"{% endif %}><img class="nav-icon" src="{{ url_for('static', filename='img/icons/scheduler.svg') }}" alt="" aria-hidden="true">Scheduler</a>
+          <a href="/setup" {% if active_page == "setup" %}aria-current="page"{% endif %}><img class="nav-icon" src="{{ url_for('static', filename='img/icons/setup.svg') }}" alt="" aria-hidden="true">Setup</a>
+          <a href="/system" {% if active_page == "system" %}aria-current="page"{% endif %}><img class="nav-icon" src="{{ url_for('static', filename='img/icons/system.svg') }}" alt="" aria-hidden="true">System</a>
+        </nav>
+
+        <section class="show-card" aria-label="Show status">
+          <span class="eyebrow">Show Status</span>
+          <strong id="shell-status">Loading</strong>
+          <span id="shell-running">Checking controller...</span>
+          <button class="primary-button full-width" type="button" data-action="start-show">Start Show</button>
+          <dl class="system-list">
+            <div>
+              <dt>Controller</dt>
+              <dd id="controller-online">Online</dd>
+            </div>
+            <div>
+              <dt>Version</dt>
+              <dd id="sidebar-version">1.0.0</dd>
+            </div>
+          </dl>
+        </section>
+      </aside>
+
+      <div class="content-shell">
+        <header class="topbar">
+          <div>
+            <span class="eyebrow">HauntOS V1</span>
+            <strong id="top-status">Status loading</strong>
+          </div>
+          <div class="topbar-actions">
+            <div id="scheduler-indicator" class="topbar-pill scheduler-indicator">Schedule Off</div>
+            <div id="running-indicator" class="running-indicator">Idle</div>
+          </div>
+        </header>
+
+        <main class="page">
+          {% block content %}{% endblock %}
+          <p id="message" class="message" role="status" aria-live="polite"></p>
+        </main>
+      </div>
+    </div>
+
+    <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
+  </body>
+</html>

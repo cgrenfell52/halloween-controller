@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Outputs | HauntOS{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <span class="eyebrow">Manual Control</span>
+    <h1>Outputs</h1>
+    <p class="muted">Toggle, pulse, and verify show outputs.</p>
+  </div>
+  <div class="header-actions">
+    <button class="ghost-button subtle-button" type="button" data-action="refresh">Refresh</button>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-title">
+    <h2>Output Bank</h2>
+    <span id="outputs-summary">8 outputs configured</span>
+  </div>
+  <div id="outputs-list" class="device-list"></div>
+</section>
+{% endblock %}

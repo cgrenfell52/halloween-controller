@@ -1,0 +1,15 @@
+[Unit]
+Description=HauntOS Captive Portal Redirector
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=/home/pi/hauntos
+ExecStart=/home/pi/hauntos/venv/bin/python /home/pi/hauntos/deploy/captive_portal.py
+Restart=always
+RestartSec=3
+KillSignal=SIGINT
+TimeoutStopSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Audio">
+  <defs>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="2.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <path d="M13 39V25h10l14-11v36L23 39z" fill="#8b43ff" stroke="#d8c1ff" stroke-width="2"/>
+  <path d="M43 24c4 4 4 12 0 16M49 18c8 8 8 20 0 28" fill="none" stroke="#57a8ff" stroke-width="4" stroke-linecap="round" filter="url(#glow)"/>
+</svg>

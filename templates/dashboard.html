@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard | HauntOS{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <span class="eyebrow">Control Center</span>
+    <h1>Dashboard</h1>
+    <p id="system-status" class="muted">Loading controller state...</p>
+  </div>
+  <div class="header-actions">
+    <button class="ghost-button subtle-button" type="button" data-action="refresh">Refresh</button>
+  </div>
+</section>
+
+<section class="dashboard-hero">
+  <article class="status-tile">
+    <span class="eyebrow">Show Status</span>
+    <strong id="dashboard-status-word">READY</strong>
+    <p id="dashboard-status-detail">Controller online</p>
+    <div class="status-actions">
+      <button class="primary-button" type="button" data-action="start-show">Start Show</button>
+    </div>
+  </article>
+  <article class="status-tile compact">
+    <span class="eyebrow">Controller</span>
+    <strong>Online</strong>
+    <p>Version 1.0.0</p>
+  </article>
+</section>
+
+<section class="panel">
+  <div class="panel-title">
+    <h2>Input Triggers</h2>
+    <span id="dashboard-input-summary">Manual routine starts</span>
+  </div>
+  <div id="dashboard-inputs" class="button-grid"></div>
+</section>
+
+<section class="panel">
+  <div class="panel-title">
+    <h2>Output States</h2>
+    <span id="dashboard-output-summary">Live output state</span>
+  </div>
+  <div id="dashboard-outputs" class="state-grid"></div>
+</section>
+{% endblock %}

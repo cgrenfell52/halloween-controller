@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Inputs | HauntOS{% endblock %}
+
+{% block content %}
+<div class="input-workspace">
+  <section class="panel input-selector-panel">
+    <div class="panel-title">
+      <h2>Inputs</h2>
+      <span id="inputs-summary">Select one to edit</span>
+    </div>
+    <div id="inputs-list" class="device-list compact"></div>
+  </section>
+
+  <section class="routine-page">
+    <header class="routine-header">
+      <div>
+        <span class="eyebrow">Routine Builder</span>
+        <h1 id="routine-title">Input</h1>
+        <p id="routine-subtitle" class="muted">Tiles run from top to bottom.</p>
+      </div>
+      <div class="header-actions">
+        <button class="ghost-button subtle-button" type="button" data-action="refresh">Refresh</button>
+        <button class="secondary-button" type="button" data-action="run-selected">Run Input</button>
+        <button class="secondary-button" type="button" data-action="test-selected">Test Routine</button>
+      </div>
+    </header>
+
+    <div class="routine-workbench">
+      <section id="routine-editor" class="panel editor-panel">
+        <div class="editor-empty">
+          <h2>Select an input</h2>
+          <p class="muted">Choose an input to view and edit its routine tiles.</p>
+        </div>
+      </section>
+
+      <aside class="right-rail">
+        <section class="panel input-settings-panel">
+          <div class="panel-title">
+            <h2>Input Settings</h2>
+            <span id="input-settings-summary">Select an input</span>
+          </div>
+          <div class="settings-row">
+            <label class="check-row">
+              <input id="input-enabled" type="checkbox">
+              <span>Input enabled</span>
+            </label>
+            <label class="field">
+              <span>Cooldown Seconds</span>
+              <input id="input-cooldown" type="number" min="0" step="1" value="5">
+            </label>
+          </div>
+          <button class="secondary-button full-width" type="button" data-action="save-input-settings">Save Input Settings</button>
+        </section>
+
+        <section class="panel media-panel">
+          <div class="panel-title">
+            <h2>Audio Files</h2>
+            <span id="audio-count">0</span>
+          </div>
+          <div id="audio-files-list" class="media-list"></div>
+        </section>
+
+        <section class="panel media-panel">
+          <div class="panel-title">
+            <h2>Video Files</h2>
+            <span id="video-count">0</span>
+          </div>
+          <div id="video-files-list" class="media-list"></div>
+        </section>
+      </aside>
+    </div>
+  </section>
+</div>
+{% endblock %}

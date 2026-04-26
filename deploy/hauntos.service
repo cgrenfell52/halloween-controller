@@ -1,0 +1,18 @@
+[Unit]
+Description=HauntOS show controller
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/hauntos
+ExecStart=/home/pi/hauntos/venv/bin/python -m app.main
+Restart=always
+RestartSec=3
+KillSignal=SIGINT
+TimeoutStopSec=5
+
+[Install]
+WantedBy=multi-user.target

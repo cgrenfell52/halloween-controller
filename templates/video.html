@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Video | HauntOS{% endblock %}
+
+{% block content %}
+<section class="page-header">
+  <div>
+    <span class="eyebrow">Media Library</span>
+    <h1>Video</h1>
+    <p class="muted">Upload and manage MP4 files for video tiles.</p>
+  </div>
+  <div class="header-actions">
+    <button class="ghost-button subtle-button" type="button" data-action="refresh">Refresh</button>
+  </div>
+</section>
+
+<div class="media-manager">
+  <section class="panel upload-card">
+    <div class="panel-title">
+      <h2>Upload Video</h2>
+      <span>.mp4</span>
+    </div>
+    <form id="video-upload-form" data-media-upload="video">
+      <label class="file-picker">
+        <span>Select video file</span>
+        <input type="file" name="file" accept=".mp4,video/mp4">
+      </label>
+      <button class="primary-purple" type="submit">Upload Video</button>
+    </form>
+  </section>
+
+  <section class="panel">
+    <div class="panel-title">
+      <h2>Video Files</h2>
+      <span id="video-library-count">0</span>
+    </div>
+    <div id="video-library-list" class="library-list"></div>
+  </section>
+</div>
+{% endblock %}

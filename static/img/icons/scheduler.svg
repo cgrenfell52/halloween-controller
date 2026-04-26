@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Scheduler">
+  <defs>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="2.2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect x="11" y="14" width="42" height="38" rx="6" fill="#111821" stroke="#57a8ff" stroke-width="3"/>
+  <path d="M11 25h42M22 10v9M42 10v9" stroke="#f7f8fb" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="33" cy="38" r="10" fill="#19142a" stroke="#b06cff" stroke-width="3"/>
+  <path d="M33 32v7l5 3" stroke="#ff891f" stroke-width="3" stroke-linecap="round" filter="url(#glow)"/>
+</svg>
